@@ -5,16 +5,17 @@
 	<SDL_image.h>
 	"graphics.h"
 
-1742718970 f:\game\game\graphics.h
+1742746494 f:\game\game\graphics.h
 	<SDL.h>
 	<SDL_image.h>
 	<SDL_ttf.h>
+	<SDL_mixer.h>
 	"defs.h"
 	<vector>
 
 1742718450 f:\game\game\defs.h
 
-1742720594 source:f:\game\game\main.cpp
+1742755776 source:f:\game\game\main.cpp
 	<iostream>
 	<SDL.h>
 	<SDL_image.h>
@@ -22,11 +23,25 @@
 	"graphics.h"
 	"defs.h"
 	"menu.h"
+	"option.h"
 
 1742674545 f:\game\game\logic.h
 
-1742720606 f:\game\game\menu.h
+1742748572 f:\game\game\menu.h
 	<SDL.h>
 	<string>
 	<vector>
+
+1742751272 f:\game\game\intro.h
+	<SDL.h>
+	<string>
+	"graphics.h"
+
+1742757662 f:\game\game\option.h
+	<SDL.h>
+	<SDL_ttf.h>
+	<SDL_mixer.h>
+	<string>
+	<fstream>
+	"graphics.h"
 
