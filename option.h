@@ -69,6 +69,7 @@ public:
                 dragging = true;
             } else if (backHovered) {
                 graphics.play(clickSound);
+
                 return OPTION_BACK;
             } else if (saveHovered) {
                 graphics.play(clickSound);

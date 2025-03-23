@@ -15,7 +15,7 @@
 
 1742718450 f:\game\game\defs.h
 
-1742755776 source:f:\game\game\main.cpp
+1742758655 source:f:\game\game\main.cpp
 	<iostream>
 	<SDL.h>
 	<SDL_image.h>
@@ -37,7 +37,7 @@
 	<string>
 	"graphics.h"
 
-1742757662 f:\game\game\option.h
+1742758024 f:\game\game\option.h
 	<SDL.h>
 	<SDL_ttf.h>
 	<SDL_mixer.h>

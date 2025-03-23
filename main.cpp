@@ -20,6 +20,17 @@ void fadeOut(SDL_Renderer* renderer) {
     }
 }
 
+void fadeIn(SDL_Renderer* renderer) {
+    SDL_Rect screenRect = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+    for (int alpha = 255; alpha >= 0; alpha -= 5) {
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, alpha);
+        SDL_RenderFillRect(renderer, &screenRect);
+        SDL_RenderPresent(renderer);
+        SDL_Delay(10);
+    }
+}
+
 int main(int argc, char *argv[])
 {
     Graphics graphics;
@@ -54,7 +65,9 @@ int main(int argc, char *argv[])
             } else if (result == MENU_OPTION) {
                 OptionMenu option;
                 option.init(graphics);
+                fadeIn(graphics.renderer);
                 bool optionRunning = true;
+                bool backPressed = false;
                 while (optionRunning) {
                     while (SDL_PollEvent(&e)) {
                         if (e.type == SDL_QUIT) {
@@ -64,12 +77,17 @@ int main(int argc, char *argv[])
                         OptionResult opt = option.handleEvent(e, graphics, clickSound);
                         if (opt == OPTION_BACK) {
                             optionRunning = false;
+                            backPressed = true;
                         }
                     }
                     graphics.prepareScene(background);
                     option.render(graphics);
                     graphics.presentScene();
+
                     SDL_Delay(16);
+                }
+                 if (backPressed) {
+                    fadeOut(graphics.renderer);
                 }
                 option.quit();
             }
