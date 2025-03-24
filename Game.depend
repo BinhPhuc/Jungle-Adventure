@@ -5,17 +5,18 @@
 	<SDL_image.h>
 	"graphics.h"
 
-1742746494 f:\game\game\graphics.h
+1742806492 f:\game\game\graphics.h
 	<SDL.h>
 	<SDL_image.h>
 	<SDL_ttf.h>
 	<SDL_mixer.h>
 	"defs.h"
 	<vector>
+	"camera.h"
 
 1742718450 f:\game\game\defs.h
 
-1742758655 source:f:\game\game\main.cpp
+1742806868 source:f:\game\game\main.cpp
 	<iostream>
 	<SDL.h>
 	<SDL_image.h>
@@ -24,24 +25,43 @@
 	"defs.h"
 	"menu.h"
 	"option.h"
+	"game.h"
 
 1742674545 f:\game\game\logic.h
 
-1742748572 f:\game\game\menu.h
+1742805939 f:\game\game\menu.h
 	<SDL.h>
 	<string>
 	<vector>
+	"camera.h"
 
 1742751272 f:\game\game\intro.h
 	<SDL.h>
 	<string>
 	"graphics.h"
 
-1742758024 f:\game\game\option.h
+1742805934 f:\game\game\option.h
 	<SDL.h>
 	<SDL_ttf.h>
 	<SDL_mixer.h>
 	<string>
 	<fstream>
 	"graphics.h"
+	"camera.h"
+
+1742806892 f:\game\game\game.h
+	"graphics.h"
+	"knight.h"
+	"camera.h"
+	<SDL.h>
+
+1742808041 f:\game\game\knight.h
+	"graphics.h"
+	"camera.h"
+	<SDL.h>
+	<map>
+	<string>
+
+1742805882 f:\game\game\camera.h
+	"defs.h"
 

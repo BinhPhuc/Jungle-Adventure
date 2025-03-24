@@ -32,11 +32,10 @@
 			<Add option="-Wall" />
 		</Compiler>
 		<Unit filename="defs.h" />
-		<Unit filename="game.h" />
-		<Unit filename="graphics.cpp" />
 		<Unit filename="graphics.h" />
-		<Unit filename="logic.h" />
 		<Unit filename="main.cpp" />
+		<Unit filename="menu.h" />
+		<Unit filename="option.h" />
 		<Extensions>
 			<lib_finder disable_auto="1" />
 		</Extensions>

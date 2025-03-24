@@ -6,6 +6,7 @@
 #include "defs.h"
 #include "menu.h"
 #include "option.h"
+#include "game.h"
 
 using namespace std;
 
@@ -39,13 +40,26 @@ int main(int argc, char *argv[])
     SDL_Texture* background = graphics.loadTexture(STAGE1_BACKGROUND_IMG);
     Mix_Chunk* clickSound = graphics.loadSound("assets/sounds/click.wav");
     Mix_Music* menuMusic = graphics.loadMusic("assets/music/background_music.mp3");
-    graphics.play(menuMusic);
+
+    int volume;
+    std::ifstream in("config.txt");
+    if (in) {
+        in >> volume;
+        if (volume != 0) {
+            graphics.play(menuMusic);
+        }
+        in.ignore();
+        in.close();
+    }
 
     Menu menu;
     menu.init(graphics);
 
     bool quit = false;
     SDL_Event e;
+
+    ScrollingBackground scrollBackground;
+    scrollBackground.setTexture(background);
 
     while (!quit) {
         graphics.prepareScene(background);
@@ -58,14 +72,36 @@ int main(int argc, char *argv[])
                 quit = true;
             }
             MenuResult result = menu.handleEvent(e, graphics, clickSound);
+
             if (result == MENU_START) {
                 graphics.play(clickSound);
                 fadeOut(graphics.renderer);
-                quit = true;
+
+                Game game;
+                game.init(graphics);
+
+                SDL_Event gameEvent;
+                bool gameRunning = true;
+                while (gameRunning) {
+                    while (SDL_PollEvent(&gameEvent)) {
+                        if (gameEvent.type == SDL_QUIT) {
+                            gameRunning = false;
+                            quit = true;
+                        }
+                        game.handleEvent(gameEvent);
+                    }
+
+                    game.update();
+                    game.render(graphics);
+
+                    SDL_Delay(16); // ~60 FPS
+                }
+
+                game.quit();
+                fadeIn(graphics.renderer);
             } else if (result == MENU_OPTION) {
                 OptionMenu option;
                 option.init(graphics);
-                fadeIn(graphics.renderer);
                 bool optionRunning = true;
                 bool backPressed = false;
                 while (optionRunning) {
@@ -85,9 +121,6 @@ int main(int argc, char *argv[])
                     graphics.presentScene();
 
                     SDL_Delay(16);
-                }
-                 if (backPressed) {
-                    fadeOut(graphics.renderer);
                 }
                 option.quit();
             }

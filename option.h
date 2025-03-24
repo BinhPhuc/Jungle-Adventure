@@ -7,6 +7,7 @@
 #include <string>
 #include <fstream>
 #include "graphics.h"
+#include "camera.h"
 
 enum OptionResult {
     OPTION_BACK,
@@ -34,6 +35,10 @@ private:
 
     bool saveConfirmed = false;
     Uint32 saveConfirmTime = 0;
+
+    bool muted = false;
+
+    Camera camera;
 
 public:
     void init(Graphics& graphics) {
@@ -128,7 +133,7 @@ public:
             SDL_QueryTexture(textTex, NULL, NULL, &tw, &th);
             int tx = rect.x + (rect.w - tw) / 2;
             int ty = rect.y + (rect.h - th) / 2;
-            graphics.renderTexture(textTex, tx, ty);
+            graphics.renderTexture(textTex, tx, ty, camera);
             SDL_DestroyTexture(textTex);
         }
     }
@@ -139,7 +144,7 @@ public:
         if (volumeLabel) {
             int lw, lh;
             SDL_QueryTexture(volumeLabel, NULL, NULL, &lw, &lh);
-            graphics.renderTexture(volumeLabel, sliderBar.x - lw - 20, sliderBar.y - lh / 2 + 5);
+            graphics.renderTexture(volumeLabel, sliderBar.x - lw - 20, sliderBar.y - lh / 2 + 5, camera);
             SDL_DestroyTexture(volumeLabel);
         }
         SDL_SetRenderDrawColor(graphics.renderer, 180, 180, 180, 255);
@@ -151,20 +156,20 @@ public:
         SDL_Texture* valTex = graphics.renderText(volStr.c_str(), font, {255, 255, 0});
         int vw, vh;
         SDL_QueryTexture(valTex, NULL, NULL, &vw, &vh);
-        graphics.renderTexture(valTex, sliderBar.x + sliderBar.w + 20, sliderBar.y - vh / 2 + 5);
+        graphics.renderTexture(valTex, sliderBar.x + sliderBar.w + 20, sliderBar.y - vh / 2 + 5, camera);
         SDL_DestroyTexture(valTex);
         SDL_Texture* nameLabel = graphics.renderText("Player", font, textColor);
         if (nameLabel) {
             int lw, lh;
             SDL_QueryTexture(nameLabel, NULL, NULL, &lw, &lh);
-            graphics.renderTexture(nameLabel, nameInputBox.x - lw - 20, nameInputBox.y + (nameInputBox.h - lh) / 2);
+            graphics.renderTexture(nameLabel, nameInputBox.x - lw - 20, nameInputBox.y + (nameInputBox.h - lh) / 2, camera);
             SDL_DestroyTexture(nameLabel);
         }
         SDL_SetRenderDrawColor(graphics.renderer, 50, 50, 50, 200);
         SDL_RenderFillRect(graphics.renderer, &nameInputBox);
         SDL_Texture* nameText = graphics.renderText(playerName.c_str(), font, textColor);
         if (nameText) {
-            graphics.renderTexture(nameText, nameInputBox.x + 10, nameInputBox.y + 5);
+            graphics.renderTexture(nameText, nameInputBox.x + 10, nameInputBox.y + 5, camera);
             SDL_DestroyTexture(nameText);
         }
         renderButton(graphics, btnBack, "Back", backHovered);
@@ -175,9 +180,22 @@ public:
         }
     }
 
+    void setMuted(bool muted_) {
+        muted = muted_;
+    }
+
+    bool getMuted() {
+        return muted;
+    }
+
     void saveSettings() {
         if (playerName.empty()) {
             playerName = "Player 1";
+        }
+        if (volume == 0) {
+            setMuted(true);
+        } else {
+            setMuted(false);
         }
         std::ofstream out("config.txt");
         if (out) {

@@ -7,6 +7,7 @@
 #include <SDL_mixer.h>
 #include "defs.h"
 #include <vector>
+#include "camera.h"
 
 struct ScrollingBackground {
     SDL_Texture* texture;
@@ -21,6 +22,62 @@ struct ScrollingBackground {
     void scroll(int distance) {
         scrollingOffset -= distance;
         if( scrollingOffset < 0 ) { scrollingOffset = width; }
+
+    }
+
+    SDL_Rect *getScrollRect() const {
+        SDL_Rect rect;
+        rect.x = scrollingOffset;
+        rect.y = 0;
+        rect.w = SCREEN_WIDTH;
+        rect.h = SCREEN_HEIGHT;
+//        return &{ scrollingOffset, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
+        return &rect;
+    }
+};
+
+struct Sprite {
+    SDL_Texture* texture = nullptr;
+    std::vector<SDL_Rect> clips;
+    int currentFrame = 0;
+    Uint32 lastFrameTime = 0;
+    int frameDelay = 100; // thời gian giữa các frame (ms)
+
+    void init(SDL_Texture* _texture, int frames, const int _clips[][4]) {
+        texture = _texture;
+        clips.clear();
+        SDL_Rect clip;
+        for (int i = 0; i < frames; i++) {
+            clip = { _clips[i][0], _clips[i][1], _clips[i][2], _clips[i][3] };
+            clips.push_back(clip);
+        }
+    }
+
+    void initAuto(SDL_Texture* _texture, int frameWidth, int frameHeight, int frameCount, int startX = 0, int startY = 0) {
+        texture = _texture;
+        clips.clear();
+        for (int i = 0; i < frameCount; i++) {
+            SDL_Rect clip = { startX + i * frameWidth, startY, frameWidth, frameHeight };
+            clips.push_back(clip);
+        }
+    }
+
+    void tick() {
+        currentFrame = (currentFrame + 1) % clips.size();
+    }
+
+    void tickTimed(Uint32 currentTime) {
+        if (currentTime - lastFrameTime > (Uint32)frameDelay) {
+            currentFrame = (currentFrame + 1) % clips.size();
+            lastFrameTime = currentTime;
+        }
+    }
+
+    const SDL_Rect* getCurrentClip() const {
+        return &clips[currentFrame];
+    }
+    int getWidth() const {
+        return getCurrentClip()->w;
     }
 };
 
@@ -82,12 +139,20 @@ struct Graphics {
         return texture;
     }
 
-    void renderTexture(SDL_Texture *texture, int x, int y)
+//    void renderTexture(SDL_Texture *texture, int x, int y)
+//    {
+//        SDL_Rect dest;
+//
+//        dest.x = x;
+//        dest.y = y;
+//        SDL_QueryTexture(texture, NULL, NULL, &dest.w, &dest.h);
+//        SDL_RenderCopy(renderer, texture, NULL, &dest);
+//    }
+    void renderTexture(SDL_Texture *texture, int x, int y, const Camera& cam)
     {
         SDL_Rect dest;
-
-        dest.x = x;
-        dest.y = y;
+        dest.x = x - cam.x;
+        dest.y = y - cam.y;
         SDL_QueryTexture(texture, NULL, NULL, &dest.w, &dest.h);
         SDL_RenderCopy(renderer, texture, NULL, &dest);
     }
@@ -110,10 +175,7 @@ struct Graphics {
         SDL_DestroyWindow(window);
         SDL_Quit();
     }
-    void render(const ScrollingBackground& background) {
-        renderTexture(background.texture, background.scrollingOffset, 0);
-        renderTexture(background.texture, background.scrollingOffset - background.width, 0);
-    }
+
     TTF_Font* loadFont(const char* path, int size)
     {
         TTF_Font* gFont = TTF_OpenFont( path, size );
@@ -171,6 +233,17 @@ struct Graphics {
         if (gChunk != nullptr) {
             Mix_PlayChannel( -1, gChunk, 0 );
         }
+    }
+    void renderSprite(int x, int y, const Sprite& sprite, const Camera& cam, bool flip = false, float scale = 1.0f) {
+        const SDL_Rect* clip = sprite.getCurrentClip();
+        SDL_Rect renderQuad = {
+            x - cam.x,
+            y - cam.y,
+            static_cast<int>(clip->w * scale),
+            static_cast<int>(clip->h * scale)
+        };
+        SDL_RendererFlip flipFlag = flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
+        SDL_RenderCopyEx(renderer, sprite.texture, clip, &renderQuad, 0, NULL, flipFlag);
     }
 };
 
