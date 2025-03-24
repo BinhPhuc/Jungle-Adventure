@@ -60,7 +60,7 @@ public:
         }
     }
 
-    void update(Camera& cam) {
+    void update(Camera& cam, int tilemapWidthInPixels) {
         if (y < groundY) {
             vy += 1;
             y += vy;
@@ -70,6 +70,8 @@ public:
             }
         } else {
             if (vx < 0) {
+                int maxCamX = tilemapWidthInPixels - SCREEN_WIDTH;
+                if (cam.x > maxCamX) cam.x = maxCamX;
                 float leftThreshold = cam.x + SCREEN_WIDTH * 0.3f;
 
                 if (x + vx >= 0 && x > leftThreshold) {
