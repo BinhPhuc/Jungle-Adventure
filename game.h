@@ -23,8 +23,8 @@ public:
     }
 
     void update() {
-        camera.update(knight.getX(), knight.getWidth());
         knight.update(camera);
+        camera.update(knight.getX(), knight.getWidth());
     }
 
     void render(Graphics& graphics) {

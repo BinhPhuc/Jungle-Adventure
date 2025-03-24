@@ -60,7 +60,7 @@ public:
         }
     }
 
-    void update(const Camera& cam) {
+    void update(Camera& cam) {
         if (y < groundY) {
             vy += 1;
             y += vy;
@@ -69,11 +69,25 @@ public:
                 vy = 0;
             }
         } else {
-            if (vx < 0 && x + vx >= 0) {
-                x += vx;
-            } else if (vx > 0) {
-                if (x <= cam.x + SCREEN_WIDTH * 0.7f) {
+            if (vx < 0) {
+                float leftThreshold = cam.x + SCREEN_WIDTH * 0.3f;
+
+                if (x + vx >= 0 && x > leftThreshold) {
                     x += vx;
+                } else if (cam.x > 0) {
+                    cam.x += vx;
+                    if (cam.x < 0) cam.x = 0;
+                } else if (x + vx >= 0) {
+                    x += vx;
+                }
+            }
+            else if (vx > 0) {
+                float rightThreshold = cam.x + SCREEN_WIDTH * 0.7f;
+
+                if (x <= rightThreshold) {
+                    x += vx;
+                } else {
+                    cam.x += vx;
                 }
             }
         }

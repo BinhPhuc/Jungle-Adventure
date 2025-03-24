@@ -5,7 +5,7 @@
 	<SDL_image.h>
 	"graphics.h"
 
-1742806492 f:\game\game\graphics.h
+1742809267 f:\game\game\graphics.h
 	<SDL.h>
 	<SDL_image.h>
 	<SDL_ttf.h>
@@ -49,13 +49,13 @@
 	"graphics.h"
 	"camera.h"
 
-1742806892 f:\game\game\game.h
+1742809280 f:\game\game\game.h
 	"graphics.h"
 	"knight.h"
 	"camera.h"
 	<SDL.h>
 
-1742808041 f:\game\game\knight.h
+1742809394 f:\game\game\knight.h
 	"graphics.h"
 	"camera.h"
 	<SDL.h>
