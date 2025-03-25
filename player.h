@@ -59,6 +59,7 @@ public:
     }
     virtual float getX() const { return x; }
     virtual float getY() const { return y; }
+    virtual void setY(float newY) { y = newY; }
     virtual PlayerState getState() const { return state; }
     virtual int getAttackDamage() const { return 10; }
 };

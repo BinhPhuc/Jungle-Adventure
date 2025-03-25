@@ -197,20 +197,28 @@ public:
     }
     float getX() const override { return x; }
     float getY() const override { return y; }
+    void setY(float newY) override { y = newY; }
     PlayerState getState() const override { return state; }
     int getAttackDamage() const override { return attackDamage; }
-
+    float& getJumpVelocity() { return jumpVelocity; }
+    bool& getIsJumping() { return isJumping; }
     // Thêm hàm để lấy giá trị thanh nộ
     float getRage() const { return rage; }
-
-private:
-    // Hàm helper để đặt trạng thái và đặt lại frame animation
     void setState(PlayerState newState) {
         if (state != newState) {
             state = newState;
             sprites[state].currentFrame = 0; // Đặt lại frame về 0 khi chuyển trạng thái
         }
     }
+
+private:
+//    // Hàm helper để đặt trạng thái và đặt lại frame animation
+//    void setState(PlayerState newState) {
+//        if (state != newState) {
+//            state = newState;
+//            sprites[state].currentFrame = 0; // Đặt lại frame về 0 khi chuyển trạng thái
+//        }
+//    }
 };
 
 #endif

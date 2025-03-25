@@ -46,6 +46,11 @@ struct StagePreview {
     std::string bossImagePath;
 };
 
+struct Platform {
+    SDL_Rect rect;
+    SDL_Texture* texture = nullptr;
+};
+
 class Game {
 private:
     GameState state = CHOOSE_CHARACTER;
@@ -84,11 +89,24 @@ private:
     // Chỉ giữ lại tên người chơi, bỏ ảnh
     std::string playerName = "Player"; // Tên người chơi mặc định
 
+    std::vector<Platform> platforms; // Danh sách các thanh ngang
+    bool bossDefeated = false; // Theo dõi xem boss đã bị hạ chưa
+
 public:
     void init(Graphics& graphics) {
         font = graphics.loadFont("assets/font/Coiny-Regular.ttf", 24);
         buttonFont = graphics.loadFont("assets/font/Coiny-Regular.ttf", 32);
         titleFont = graphics.loadFont("assets/font/Coiny-Regular.ttf", 48);
+
+        Platform platform1;
+        platform1.rect = {400, 400, 200, 20}; // Vị trí và kích thước
+        platform1.texture = graphics.loadTexture("assets/imgs/platform.png"); // Sprite cho platform
+        platforms.push_back(platform1);
+
+        Platform platform2;
+        platform2.rect = {700, 300, 200, 20}; // Thanh thứ hai
+        platform2.texture = graphics.loadTexture("assets/imgs/platform.png");
+        platforms.push_back(platform2);
 
         // Đọc tên người chơi từ file config.txt
         std::ifstream configFile("config.txt");
@@ -553,6 +571,23 @@ private:
         boss->update();
         boss->attack(bossProjectiles);
 
+        Warrior* warrior = dynamic_cast<Warrior*>(player);
+        if (warrior) {
+            float y = warrior->getY();
+            float& jumpVelocity = warrior->getJumpVelocity(); // Cần thêm getter/setter trong warrior.h
+            for (const auto& platform : platforms) {
+                SDL_Rect playerRect = {static_cast<int>(warrior->getX()), static_cast<int>(y), 96, 84};
+                if (SDL_HasIntersection(&playerRect, &platform.rect) && jumpVelocity > 0) {
+                    y = platform.rect.y - 84; // Đặt nhân vật trên platform
+                    warrior->setY(y);
+                    jumpVelocity = 0;
+                    warrior->getIsJumping() = false; // Cần thêm getter/setter trong warrior.h
+                    warrior->setState(PlayerState::IDLE);
+                    break;
+                }
+            }
+        }
+
         // Cập nhật đạn của Boss
         for (auto it = bossProjectiles.begin(); it != bossProjectiles.end();) {
             it->x -= 5; // Giảm tốc độ đạn từ 5 xuống 3 pixel mỗi frame
@@ -588,6 +623,7 @@ private:
         if (boss->getHP() <= 0 && boss->getState() == BossState::DEATH) {
             state = VICTORY;
             resultDisplayTime = SDL_GetTicks();
+            bossDefeated = true;
         } else if (player->getHP() <= 0 && player->getState() == PlayerState::DEATH) {
             state = GAME_OVER;
             resultDisplayTime = SDL_GetTicks();
@@ -595,6 +631,9 @@ private:
     }
 
     void renderBattle(Graphics& graphics) {
+        for (const auto& platform : platforms) {
+            graphics.renderTexture(platform.texture, platform.rect.x, platform.rect.y);
+        }
         player->render(graphics);
         boss->render(graphics);
 
@@ -714,6 +753,12 @@ public:
         if (clickSound) {
             Mix_FreeChunk(clickSound);
             clickSound = nullptr;
+        }
+        for (auto& platform : platforms) {
+            if (platform.texture) {
+                SDL_DestroyTexture(platform.texture);
+                platform.texture = nullptr;
+            }
         }
     }
 };
