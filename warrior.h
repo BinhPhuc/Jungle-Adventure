@@ -14,7 +14,11 @@ private:
     float attackSpeed = 1.0f; // Tấn công mỗi 1 giây
     Uint32 lastAttackTime = 0;
     int attackCombo = 0; // Theo dõi combo tấn công (1 → 2 → 3)
-    float groundLevel = 600.0f; // Tọa độ y của mặt đất (điều chỉnh theo background)
+    float groundLevel = 550.0f; // Tọa độ y của mặt đất (điều chỉnh theo background)
+
+    // Thêm biến cho thanh nộ
+    float rage = 0.0f; // Giá trị thanh nộ (0-100)
+    Uint32 rageTimer = 0; // Thời gian để tính tăng nộ
 
 public:
     void init(Graphics& graphics) override {
@@ -53,6 +57,10 @@ public:
         sprites[PlayerState::ATTACK2].frameDelay = 150;
         sprites[PlayerState::ATTACK3].frameDelay = 150;
         sprites[PlayerState::DEATH].frameDelay = 200; // Chết chậm hơn
+
+        // Khởi tạo thanh nộ
+        rage = 0.0f;
+        rageTimer = SDL_GetTicks();
     }
 
     void handleEvent(const SDL_Event& e) override {
@@ -60,7 +68,7 @@ public:
 
         if (e.type == SDL_KEYDOWN && e.key.repeat == 0) {
             switch (e.key.keysym.sym) {
-                case SDLK_a:
+                case SDLK_a: {
                     vx = -speed; // Đặt vận tốc sang trái
                     facingLeft = true;
                     if (SDL_GetModState() & KMOD_SHIFT) {
@@ -71,7 +79,8 @@ public:
                         vx = -5.0f;
                     }
                     break;
-                case SDLK_d:
+                }
+                case SDLK_d: {
                     vx = speed; // Đặt vận tốc sang phải
                     facingLeft = false;
                     if (SDL_GetModState() & KMOD_SHIFT) {
@@ -82,14 +91,16 @@ public:
                         vx = 5.0f;
                     }
                     break;
-                case SDLK_SPACE:
+                }
+                case SDLK_SPACE: {
                     if (!isJumping) {
                         jumpVelocity = -15.0f;
                         isJumping = true;
                         setState(PlayerState::JUMP);
                     }
                     break;
-                case SDLK_j: // Tấn công
+                }
+                case SDLK_j: { // Tấn công
                     Uint32 currentTime = SDL_GetTicks();
                     if (currentTime - lastAttackTime >= attackSpeed * 1000) {
                         attackCombo = (attackCombo + 1) % 3; // Chuyển qua ATTACK1 -> ATTACK2 -> ATTACK3
@@ -99,6 +110,17 @@ public:
                         lastAttackTime = currentTime;
                     }
                     break;
+                }
+                case SDLK_i: { // Tiêu hao thanh nộ
+                    if (rage >= 100.0f) { // Chỉ khi thanh nộ đầy
+                        rage = 0.0f; // Đặt lại thanh nộ
+                        rageTimer = SDL_GetTicks(); // Đặt lại thời gian
+                        attackDamage += 2; // Tăng sát thương thêm 2
+                        hp += 30; // Tăng máu thêm 30
+                        if (hp > 150) hp = 150; // Giới hạn máu tối đa
+                    }
+                    break;
+                }
             }
         } else if (e.type == SDL_KEYUP && e.key.repeat == 0) {
             if (e.key.keysym.sym == SDLK_a || e.key.keysym.sym == SDLK_d) {
@@ -112,6 +134,14 @@ public:
         if (state == PlayerState::DEATH) {
             sprites[state].tickTimed(SDL_GetTicks());
             return;
+        }
+
+        // Cập nhật thanh nộ
+        if (rage < 100.0f) {
+            Uint32 currentTime = SDL_GetTicks();
+            float elapsedTime = (currentTime - rageTimer) / 1000.0f; // Thời gian trôi qua (giây)
+            rage = (elapsedTime / 10.0f) * 100.0f; // Tăng 100% trong 10 giây
+            if (rage > 100.0f) rage = 100.0f; // Giới hạn tối đa
         }
 
         // Cập nhật tọa độ x dựa trên vận tốc
@@ -159,7 +189,7 @@ public:
     }
 
     void render(Graphics& graphics) override {
-        graphics.renderSprite(static_cast<int>(x), static_cast<int>(y), sprites[state], facingLeft, 1.5f);
+        graphics.renderSprite(static_cast<int>(x), static_cast<int>(y), sprites[state], facingLeft, 2.5f);
     }
 
     void attack(std::vector<SDL_Rect>& projectiles) override {
@@ -182,8 +212,9 @@ public:
     PlayerState getState() const override { return state; }
     int getAttackDamage() const override { return attackDamage; }
 
+    float getRage() const { return rage; }
+
 private:
-    // Hàm helper để đặt trạng thái và đặt lại frame animation
     void setState(PlayerState newState) {
         if (state != newState) {
             state = newState;

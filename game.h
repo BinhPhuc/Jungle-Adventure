@@ -5,9 +5,11 @@
 #include "player.h"
 #include "warrior.h"
 #include "boss.h"
+#include "flyingdemon.h"
 #include <vector>
 #include <string>
 #include <sstream>
+#include <fstream>
 
 enum GameState {
     CHOOSE_CHARACTER,
@@ -53,10 +55,10 @@ private:
     TTF_Font* font = nullptr;
     TTF_Font* titleFont = nullptr;
     TTF_Font* buttonFont = nullptr;
-    SDL_Texture* currentBackground = nullptr; // Background hiện tại
-    std::vector<SDL_Texture*> stageBackgrounds; // Danh sách background cho từng stage
-    Mix_Music* menuMusic = nullptr; // Nhạc menu (nếu có)
-    Mix_Music* battleMusic = nullptr; // Nhạc chiến đấu
+    SDL_Texture* currentBackground = nullptr;
+    std::vector<SDL_Texture*> stageBackgrounds;
+    Mix_Music* menuMusic = nullptr;
+    Mix_Music* battleMusic = nullptr;
     Mix_Chunk* clickSound = nullptr;
 
     std::vector<CharacterButton> characterButtons;
@@ -70,7 +72,7 @@ private:
     bool backHovered = false;
 
     Player* player = nullptr;
-    Boss boss;
+    Boss* boss = nullptr;
     std::vector<SDL_Rect> bossProjectiles;
     Uint32 resultDisplayTime = 0;
 
@@ -79,11 +81,29 @@ private:
     SDL_Color normalBoxColor = {0, 0, 0, 180};
     SDL_Color hoverBoxColor = {50, 50, 50, 220};
 
+    // Chỉ giữ lại tên người chơi, bỏ ảnh
+    std::string playerName = "Player"; // Tên người chơi mặc định
+
 public:
     void init(Graphics& graphics) {
         font = graphics.loadFont("assets/font/Coiny-Regular.ttf", 24);
         buttonFont = graphics.loadFont("assets/font/Coiny-Regular.ttf", 32);
         titleFont = graphics.loadFont("assets/font/Coiny-Regular.ttf", 48);
+
+        // Đọc tên người chơi từ file config.txt
+        std::ifstream configFile("config.txt");
+        if (configFile.is_open()) {
+            std::string line;
+            // Bỏ qua dòng đầu tiên (âm thanh)
+            std::getline(configFile, line);
+            // Lấy dòng thứ hai (tên người chơi)
+            if (std::getline(configFile, line)) {
+                playerName = line;
+            }
+            configFile.close();
+        } else {
+            playerName = "Player"; // Mặc định nếu không đọc được file
+        }
 
         // Tải background mặc định (dùng cho menu)
         currentBackground = graphics.loadTexture("assets/imgs/bg.png");
@@ -93,7 +113,7 @@ public:
         stageBackgrounds.push_back(graphics.loadTexture("assets/imgs/stage2.png")); // Stage 2 (giả định)
 
         // Tải nhạc
-        menuMusic = graphics.loadMusic("assets/music/menu_music.mp3"); // Giả định có nhạc menu
+        menuMusic = graphics.loadMusic("assets/music/menu_music.mp3");
         battleMusic = graphics.loadMusic("assets/music/battle_music.mp3");
         clickSound = graphics.loadSound("assets/sounds/click.wav");
 
@@ -114,8 +134,7 @@ public:
         // Khởi tạo thông tin preview cho từng stage
         stagePreviews.push_back({"Flying Demon", "A fierce flying demon lurking in the shadows.",
                                 "assets/sprites/flying_demon/boss_flying_demon.png"});
-        stagePreviews.push_back({"Mystery Creature", "A mysterious creature with unknown powers.",
-                                "assets/boss/boss2.png"});
+        stagePreviews.push_back({"Mystery Creature", "A mysterious creature with unknown powers.", "assets/sprites/boss/boss2.png"});
 
         // Điều chỉnh vị trí của nút READY và BACK để nằm cạnh nhau
         int btnWidth = 150;
@@ -151,7 +170,7 @@ public:
                 }
             }
 
-            graphics.prepareScene(currentBackground); // Sử dụng background hiện tại
+            graphics.prepareScene(currentBackground);
             render(graphics);
             graphics.presentScene();
             SDL_Delay(16);
@@ -490,32 +509,43 @@ private:
             currentBackground = stageBackgrounds[selectedStage];
         }
 
-        // Khởi tạo nhân vật và boss
+        // Khởi tạo nhân vật
         if (selectedCharacter == 0) {
             player = new Warrior();
         } else {
             player = new Warrior(); // Chưa có Mage
         }
         player->init(graphics);
-        boss.init(graphics, 1000, 500, selectedStage);
+
+        // Khởi tạo Boss dựa trên stage
+        if (boss) {
+            delete boss;
+            boss = nullptr;
+        }
+        if (selectedStage == 0) {
+            boss = new FlyingDemon();
+        } else {
+            boss = new FlyingDemon(); // Chưa có Boss cho Stage 2, tạm dùng FlyingDemon
+        }
+        boss->init(graphics, 1000, 550, selectedStage);
         bossProjectiles.clear();
     }
 
     void updateBattle(Graphics& graphics) {
         player->update();
-        boss.update();
-        boss.attack(bossProjectiles);
+        boss->update();
+        boss->attack(bossProjectiles);
 
         // Cập nhật đạn của Boss
         for (auto it = bossProjectiles.begin(); it != bossProjectiles.end();) {
-            it->x -= 5; // Đạn di chuyển sang trái
+            it->x -= 3; // Đạn di chuyển sang trái
             if (it->x < 0) {
                 it = bossProjectiles.erase(it);
             } else {
                 // Kiểm tra va chạm với Player
                 SDL_Rect playerRect = {static_cast<int>(player->getX()), static_cast<int>(player->getY()), 96, 84};
                 if (SDL_HasIntersection(&(*it), &playerRect)) {
-                    player->takeDamage(boss.getAttackDamage());
+                    player->takeDamage(boss->getAttackDamage());
                     it = bossProjectiles.erase(it);
                 } else {
                     ++it;
@@ -525,14 +555,14 @@ private:
 
         // Kiểm tra va chạm cận chiến của Warrior với Boss
         if (player->getState() == PlayerState::ATTACK1 || player->getState() == PlayerState::ATTACK2 || player->getState() == PlayerState::ATTACK3) {
-            float distance = std::abs(player->getX() - boss.getX());
+            float distance = std::abs(player->getX() - boss->getX());
             if (distance < 100) { // Khoảng cách tấn công cận chiến
-                boss.takeDamage(player->getAttackDamage());
+                boss->takeDamage(player->getAttackDamage());
             }
         }
 
         // Kiểm tra điều kiện thắng/thua
-        if (boss.getHP() <= 0 && boss.getState() == BossState::DEATH) {
+        if (boss->getHP() <= 0 && boss->getState() == BossState::DEATH) {
             state = VICTORY;
             resultDisplayTime = SDL_GetTicks();
         } else if (player->getHP() <= 0 && player->getState() == PlayerState::DEATH) {
@@ -543,25 +573,56 @@ private:
 
     void renderBattle(Graphics& graphics) {
         player->render(graphics);
-        boss.render(graphics);
+        boss->render(graphics);
 
         // Vẽ đạn của Boss
         for (const auto& projectile : bossProjectiles) {
-            boss.renderProjectile(graphics, projectile);
+            boss->renderProjectile(graphics, projectile);
         }
 
-        // Vẽ thanh máu
+        // Vẽ thanh máu và thanh nộ
         renderHealthBars(graphics);
     }
 
     void renderHealthBars(Graphics& graphics) {
         // Thanh máu của Player
-        SDL_Rect playerHealthBar = {20, 20, player->getHP() * 2, 20};
+        int healthBarY = 60; // Dịch xuống để có chỗ cho tên
+
+        // Hiển thị tên người chơi
+        SDL_Texture* nameTex = graphics.renderText(playerName.c_str(), font, normalTextColor);
+        if (nameTex) {
+            int tw, th;
+            SDL_QueryTexture(nameTex, NULL, NULL, &tw, &th);
+            graphics.renderTexture(nameTex, 20, 20); // Không cần khoảng trống cho ảnh
+            SDL_DestroyTexture(nameTex);
+        }
+
+        // Thanh máu của Player
+        SDL_Rect playerHealthBar = {20, healthBarY, player->getHP() * 2, 20};
         SDL_SetRenderDrawColor(graphics.renderer, 0, 255, 0, 255); // Màu xanh lá
         SDL_RenderFillRect(graphics.renderer, &playerHealthBar);
 
+        // Thanh nộ của Player
+        Warrior* warrior = dynamic_cast<Warrior*>(player); // Ép kiểu để truy cập getRage
+        if (warrior) {
+            SDL_Rect rageBar = {20, healthBarY + 25, static_cast<int>(warrior->getRage() * 2), 10}; // Chiều cao nhỏ hơn
+            SDL_SetRenderDrawColor(graphics.renderer, 255, 165, 0, 255); // Màu cam cho thanh nộ
+            SDL_RenderFillRect(graphics.renderer, &rageBar);
+        }
+
         // Thanh máu của Boss
-        SDL_Rect bossHealthBar = {SCREEN_WIDTH - 220, 20, boss.getHP(), 20};
+        // Hiển thị tên Boss
+        const StagePreview& preview = stagePreviews[selectedStage];
+        SDL_Texture* bossNameTex = graphics.renderText(preview.bossName.c_str(), font, normalTextColor);
+        if (bossNameTex) {
+            int tw, th;
+            SDL_QueryTexture(bossNameTex, NULL, NULL, &tw, &th);
+            graphics.renderTexture(bossNameTex, SCREEN_WIDTH - 220 - tw, 20); // Không cần khoảng trống cho ảnh
+            SDL_DestroyTexture(bossNameTex);
+        }
+
+        // Thanh máu của Boss
+        SDL_Rect bossHealthBar = {SCREEN_WIDTH - 220, healthBarY, boss->getHP(), 20};
         SDL_SetRenderDrawColor(graphics.renderer, 255, 0, 0, 255); // Màu đỏ
         SDL_RenderFillRect(graphics.renderer, &bossHealthBar);
     }
@@ -590,6 +651,10 @@ public:
         if (player) {
             delete player;
             player = nullptr;
+        }
+        if (boss) {
+            delete boss;
+            boss = nullptr;
         }
         if (font) {
             TTF_CloseFont(font);

@@ -31,15 +31,17 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="boss.h" />
 		<Unit filename="camera.h" />
 		<Unit filename="defs.h" />
+		<Unit filename="flyingdemon.h" />
 		<Unit filename="game.h" />
 		<Unit filename="graphics.h" />
-		<Unit filename="knight.h" />
 		<Unit filename="main.cpp" />
 		<Unit filename="menu.h" />
 		<Unit filename="option.h" />
-		<Unit filename="tilemap.h" />
+		<Unit filename="player.h" />
+		<Unit filename="warrior.h" />
 		<Extensions>
 			<lib_finder disable_auto="1" />
 		</Extensions>
