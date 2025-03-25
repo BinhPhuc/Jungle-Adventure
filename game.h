@@ -640,12 +640,13 @@ private:
         if (bossNameTex) {
             int tw, th;
             SDL_QueryTexture(bossNameTex, NULL, NULL, &tw, &th);
-            graphics.renderTexture(bossNameTex, SCREEN_WIDTH - 220 - tw, 20); // Không cần khoảng trống cho ảnh
+            graphics.renderTexture(bossNameTex, SCREEN_WIDTH - 20 - tw, 20); // Không cần khoảng trống cho ảnh
+            std::cout << tw  << "\n";
             SDL_DestroyTexture(bossNameTex);
         }
 
         // Thanh máu của Boss
-        SDL_Rect bossHealthBar = {SCREEN_WIDTH - 220, healthBarY, boss->getHP(), 20};
+        SDL_Rect bossHealthBar = {SCREEN_WIDTH - boss->getHP() * 2 - 20, healthBarY, boss->getHP() * 2, 20};
         SDL_SetRenderDrawColor(graphics.renderer, 255, 0, 0, 255); // Màu đỏ
         SDL_RenderFillRect(graphics.renderer, &bossHealthBar);
     }
