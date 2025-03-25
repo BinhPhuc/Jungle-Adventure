@@ -38,8 +38,8 @@ int main(int argc, char *argv[])
     graphics.init();
 
     SDL_Texture* background = graphics.loadTexture(STAGE1_BACKGROUND_IMG);
-    Mix_Chunk* clickSound = graphics.loadSound("assets/sounds/click.wav");
     Mix_Music* menuMusic = graphics.loadMusic("assets/music/menu_music.wav");
+    Mix_Chunk* clickSound = graphics.loadSound("assets/sounds/click.wav");
 
     int volume;
     std::ifstream in("config.txt");
@@ -75,13 +75,15 @@ int main(int argc, char *argv[])
                 fadeOut(graphics.renderer);
                 Game game;
                 game.init(graphics);
-                game.run(graphics);
-
+                GameState gameResult = game.run(graphics);
+                fadeIn(graphics.renderer);
+                game.quit();
+                if (gameResult == RETURN_TO_MENU) {
+                }
             } else if (result == MENU_OPTION) {
                 OptionMenu option;
                 option.init(graphics);
                 bool optionRunning = true;
-                bool backPressed = false;
                 while (optionRunning) {
                     while (SDL_PollEvent(&e)) {
                         if (e.type == SDL_QUIT) {
@@ -91,13 +93,11 @@ int main(int argc, char *argv[])
                         OptionResult opt = option.handleEvent(e, graphics, clickSound);
                         if (opt == OPTION_BACK) {
                             optionRunning = false;
-                            backPressed = true;
                         }
                     }
                     graphics.prepareScene(background);
                     option.render(graphics);
                     graphics.presentScene();
-
                     SDL_Delay(16);
                 }
                 option.quit();
@@ -112,4 +112,3 @@ int main(int argc, char *argv[])
     graphics.quit();
     return 0;
 }
-

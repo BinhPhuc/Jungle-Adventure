@@ -15,7 +15,7 @@
 
 1742874740 f:\game\game\defs.h
 
-1742880359 source:f:\game\game\main.cpp
+1742888767 source:f:\game\game\main.cpp
 	<iostream>
 	<SDL.h>
 	<SDL_image.h>
@@ -46,11 +46,13 @@
 	<fstream>
 	"graphics.h"
 
-1742885466 f:\game\game\game.h
+1742889147 f:\game\game\game.h
 	"graphics.h"
 	"player.h"
 	"boss.h"
 	<vector>
+	<string>
+	<sstream>
 
 1742874084 f:\game\game\knight.h
 	"graphics.h"
