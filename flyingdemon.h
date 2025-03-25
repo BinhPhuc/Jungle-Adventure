@@ -9,13 +9,13 @@ private:
     bool movingRight = false;
     Sprite fireballSprite;
     Uint32 lastAttackTime = 0;
-    int attackDamage = 20;
+    int attackDamage = 12;
 
 public:
     void init(Graphics& graphics, float startX, float startY, int stage) override {
         x = startX;
         y = startY;
-        hp = 50;
+        hp = 90;
         state = BossState::FLYING;
 
         // Tải sprite cho từng hành động từ các file riêng biệt
@@ -81,7 +81,7 @@ public:
         if (state == BossState::DEATH) return;
 
         Uint32 currentTime = SDL_GetTicks();
-        float attackInterval = (hp > 100) ? 2000 : 1000; // Tấn công nhanh hơn khi HP dưới 50%
+        float attackInterval = (hp > 45) ? 2000 : 1000; // Tấn công nhanh hơn khi HP dưới 50%
         if (currentTime - lastAttackTime >= attackInterval) {
             state = BossState::ATTACK;
             SDL_Rect projectile = {static_cast<int>(x), static_cast<int>(y + 20), 32, 32};

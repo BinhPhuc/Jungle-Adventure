@@ -10,7 +10,7 @@ private:
     bool isJumping = false;
     float jumpVelocity = -15.0f;
     float gravity = 0.5f;
-    int attackDamage = 10;
+    int attackDamage = 15;
     float attackSpeed = 1.0f; // Tấn công mỗi 1 giây
     Uint32 lastAttackTime = 0;
     float groundLevel = 550.0f; // Tọa độ y của mặt đất (điều chỉnh theo background)
@@ -21,7 +21,7 @@ private:
 
 public:
     void init(Graphics& graphics) override {
-        hp = 150;
+        hp = 120;
         x = 100;
         y = groundLevel; // Đặt y ban đầu để nhân vật chạm đất
         state = PlayerState::IDLE;
@@ -130,7 +130,7 @@ public:
         if (rage < 100.0f) {
             Uint32 currentTime = SDL_GetTicks();
             float elapsedTime = (currentTime - rageTimer) / 1000.0f; // Thời gian trôi qua (giây)
-            rage = (elapsedTime / 10.0f) * 100.0f; // Tăng 100% trong 10 giây
+            rage = (elapsedTime / 15.0f) * 100.0f; // Tăng 100% trong 10 giây
             if (rage > 100.0f) rage = 100.0f; // Giới hạn tối đa
         }
 

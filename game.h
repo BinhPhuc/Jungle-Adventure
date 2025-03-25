@@ -555,7 +555,7 @@ private:
 
         // Cập nhật đạn của Boss
         for (auto it = bossProjectiles.begin(); it != bossProjectiles.end();) {
-            it->x -= 3; // Giảm tốc độ đạn từ 5 xuống 3 pixel mỗi frame
+            it->x -= 5; // Giảm tốc độ đạn từ 5 xuống 3 pixel mỗi frame
             if (it->x < 0) {
                 it = bossProjectiles.erase(it);
             } else {
