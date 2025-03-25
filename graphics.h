@@ -7,34 +7,6 @@
 #include <SDL_mixer.h>
 #include "defs.h"
 #include <vector>
-#include "camera.h"
-
-struct ScrollingBackground {
-    SDL_Texture* texture;
-    int scrollingOffset = 0;
-    int width, height;
-
-    void setTexture(SDL_Texture* _texture) {
-        texture = _texture;
-        SDL_QueryTexture(texture, NULL, NULL, &width, &height);
-    }
-
-    void scroll(int distance) {
-        scrollingOffset -= distance;
-        if( scrollingOffset < 0 ) { scrollingOffset = width; }
-
-    }
-
-    SDL_Rect *getScrollRect() const {
-        SDL_Rect rect;
-        rect.x = scrollingOffset;
-        rect.y = 0;
-        rect.w = SCREEN_WIDTH;
-        rect.h = SCREEN_HEIGHT;
-//        return &{ scrollingOffset, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
-        return &rect;
-    }
-};
 
 struct Sprite {
     SDL_Texture* texture = nullptr;
@@ -78,6 +50,9 @@ struct Sprite {
     }
     int getWidth() const {
         return getCurrentClip()->w;
+    }
+    int getHeight() const {
+        return getCurrentClip()->h;
     }
 };
 
@@ -139,20 +114,12 @@ struct Graphics {
         return texture;
     }
 
-//    void renderTexture(SDL_Texture *texture, int x, int y)
-//    {
-//        SDL_Rect dest;
-//
-//        dest.x = x;
-//        dest.y = y;
-//        SDL_QueryTexture(texture, NULL, NULL, &dest.w, &dest.h);
-//        SDL_RenderCopy(renderer, texture, NULL, &dest);
-//    }
-    void renderTexture(SDL_Texture *texture, int x, int y, const Camera& cam)
+    void renderTexture(SDL_Texture *texture, int x, int y)
     {
         SDL_Rect dest;
-        dest.x = x - cam.x;
-        dest.y = y - cam.y;
+
+        dest.x = x;
+        dest.y = y;
         SDL_QueryTexture(texture, NULL, NULL, &dest.w, &dest.h);
         SDL_RenderCopy(renderer, texture, NULL, &dest);
     }
@@ -164,7 +131,7 @@ struct Graphics {
         dest.y = y;
         dest.w = src->w;
         dest.h = src->h;
-        SDL_RenderCopy(renderer, texture, src, &dest);
+        SDL_RenderCopy(renderer, texture, NULL, &dest);
     }
     void quit()
     {
@@ -234,11 +201,11 @@ struct Graphics {
             Mix_PlayChannel( -1, gChunk, 0 );
         }
     }
-    void renderSprite(int x, int y, const Sprite& sprite, const Camera& cam, bool flip = false, float scale = 1.0f) {
+    void renderSprite(int x, int y, const Sprite& sprite, bool flip = false, float scale = 1.0f) {
         const SDL_Rect* clip = sprite.getCurrentClip();
         SDL_Rect renderQuad = {
-            x - cam.x,
-            y - cam.y,
+            x,
+            y,
             static_cast<int>(clip->w * scale),
             static_cast<int>(clip->h * scale)
         };

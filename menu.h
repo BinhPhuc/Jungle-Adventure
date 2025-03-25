@@ -4,7 +4,6 @@
 #include <SDL.h>
 #include <string>
 #include <vector>
-#include "camera.h"
 
 struct MenuButton {
     std::string text;
@@ -32,8 +31,6 @@ private:
     SDL_Color hoverTextColor = {100, 255, 100};
     SDL_Color normalBoxColor = {0, 0, 0, 180};
     SDL_Color hoverBoxColor = {50, 50, 50, 220};
-    Camera camera;
-
 public:
     void init(Graphics& graphics) {
         titleFont = graphics.loadFont("assets/font/Coiny-Regular.ttf", 64);
@@ -57,7 +54,7 @@ public:
             SDL_QueryTexture(titleTex, NULL, NULL, &tw, &th);
             int tx = (SCREEN_WIDTH - tw) / 2;
             int ty = 80;
-            graphics.renderTexture(titleTex, tx, ty, camera);
+            graphics.renderTexture(titleTex, tx, ty);
             SDL_DestroyTexture(titleTex);
         }
 
@@ -74,7 +71,7 @@ public:
                 SDL_QueryTexture(textTex, NULL, NULL, &tw, &th);
                 int tx = btn.rect.x + (btn.rect.w - tw) / 2;
                 int ty = btn.rect.y + (btn.rect.h - th) / 2;
-                graphics.renderTexture(textTex, tx, ty, camera);
+                graphics.renderTexture(textTex, tx, ty);
                 SDL_DestroyTexture(textTex);
             }
         }

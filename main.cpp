@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 
     SDL_Texture* background = graphics.loadTexture(STAGE1_BACKGROUND_IMG);
     Mix_Chunk* clickSound = graphics.loadSound("assets/sounds/click.wav");
-    Mix_Music* menuMusic = graphics.loadMusic("assets/music/background_music.mp3");
+    Mix_Music* menuMusic = graphics.loadMusic("assets/music/menu_music.wav");
 
     int volume;
     std::ifstream in("config.txt");
@@ -58,9 +58,6 @@ int main(int argc, char *argv[])
     bool quit = false;
     SDL_Event e;
 
-    ScrollingBackground scrollBackground;
-    scrollBackground.setTexture(background);
-
     while (!quit) {
         graphics.prepareScene(background);
         menu.renderOverlay(graphics);
@@ -76,29 +73,10 @@ int main(int argc, char *argv[])
             if (result == MENU_START) {
                 graphics.play(clickSound);
                 fadeOut(graphics.renderer);
-
                 Game game;
                 game.init(graphics);
+                game.run(graphics);
 
-                SDL_Event gameEvent;
-                bool gameRunning = true;
-                while (gameRunning) {
-                    while (SDL_PollEvent(&gameEvent)) {
-                        if (gameEvent.type == SDL_QUIT) {
-                            gameRunning = false;
-                            quit = true;
-                        }
-                        game.handleEvent(gameEvent);
-                    }
-
-                    game.update();
-                    game.render(graphics);
-
-                    SDL_Delay(16); // ~60 FPS
-                }
-
-                game.quit();
-                fadeIn(graphics.renderer);
             } else if (result == MENU_OPTION) {
                 OptionMenu option;
                 option.init(graphics);

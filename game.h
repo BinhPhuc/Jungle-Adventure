@@ -1,63 +1,97 @@
+// --- game.h ---
 #ifndef _GAME__H
 #define _GAME__H
 
 #include "graphics.h"
-#include "knight.h"
-#include "camera.h"
-#include "tilemap.h"
-#include <SDL.h>
+#include "player.h"
+#include "boss.h"
+#include <vector>
+
+enum GameState {
+    CHOOSE_STAGE,
+    IN_BATTLE
+};
 
 class Game {
 private:
-    SDL_Texture* bg = nullptr;
-    Knight knight;
-    Camera camera;
-    SDL_Texture* sky = nullptr;
-    SDL_Texture* mountain = nullptr;
+    GameState state = CHOOSE_STAGE;
+    int selectedStage = 0;
 
-    TileMap tilemap;
+    TTF_Font* font;
+    SDL_Texture* battleBackground;
+    Mix_Music* battleMusic;
+
+    Player player;
+    Boss boss;
+
+    std::vector<std::string> stageNames = {"Boss 1", "Boss 2"};
 
 public:
     void init(Graphics& graphics) {
-        bg = graphics.loadTexture(STAGE1_BACKGROUND_IMG);
-        knight.init(graphics);
-        sky = graphics.loadTexture("assets/env/Sky.png");
-        mountain = graphics.loadTexture("assets/env/BackGround.png");
-        tilemap.load(graphics, "assets/env/TileSet.png", "assets/map/map.txt", TILE_SIZE, TILE_SIZE);
+        font = graphics.loadFont("assets/font/Coiny-Regular.ttf", 36);
+        battleBackground = graphics.loadTexture("assets/imgs/bg.png");
+        battleMusic = graphics.loadMusic("assets/music/battle_music.mp3");
     }
 
-    void handleEvent(SDL_Event& e) {
-        knight.handleEvent(e);
+    void run(Graphics& graphics) {
+        SDL_Event e;
+        bool running = true;
+        Mix_Pause(-1);
+        graphics.play(battleMusic);
+        while (running) {
+            while (SDL_PollEvent(&e)) {
+                if (e.type == SDL_QUIT) running = false;
+                if (state == CHOOSE_STAGE) {
+                    if (e.type == SDL_KEYDOWN && (e.key.keysym.sym == SDLK_1 || e.key.keysym.sym == SDLK_2)) {
+                        selectedStage = (e.key.keysym.sym == SDLK_1) ? 0 : 1;
+                        enterBattle(graphics);
+                        state = IN_BATTLE;
+                    }
+                } else if (state == IN_BATTLE) {
+                    player.handleEvent(e);
+                }
+            }
+
+            graphics.prepareScene(battleBackground);
+
+            if (state == CHOOSE_STAGE) {
+                renderStageSelection(graphics);
+            } else if (state == IN_BATTLE) {
+                updateBattle();
+                renderBattle(graphics);
+            }
+
+            graphics.presentScene();
+            SDL_Delay(16);
+        }
     }
 
-    void renderBackground(Graphics& graphics, SDL_Texture* bgTexture, const Camera& cam) {
-        SDL_Rect src = { cam.x, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
-        SDL_Rect dest = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
-        SDL_RenderCopy(graphics.renderer, bgTexture, &src, &dest);
+    void enterBattle(Graphics& graphics) {
+        graphics.play(battleMusic);
+        player.init(graphics);
+        boss.init(graphics, 1000, 500, selectedStage);
     }
 
-    void update() {
-        int mapPixelWidth = tilemap.getCols() * TILE_SIZE;
-        knight.update(camera, mapPixelWidth);
-//        knight.update(camera);
-        camera.update(knight.getX(), knight.getWidth());
+    void updateBattle() {
+        player.update();
+        boss.update();
     }
 
-    void render(Graphics& graphics) {
-        graphics.prepareScene();
-        graphics.renderBackgroundLayer(sky, camera.x, 0.2f);
-        graphics.renderBackgroundLayer(mountain, camera.x, 0.4f);
+    void renderStageSelection(Graphics& graphics) {
+        SDL_Color c = {255, 255, 255};
+        SDL_Texture* txt1 = graphics.renderText("Press 1: Boss 1", font, c);
+        SDL_Texture* txt2 = graphics.renderText("Press 2: Boss 2", font, c);
 
-        tilemap.render(graphics, camera);
-        knight.render(graphics, camera);
-        graphics.presentScene();
+        graphics.renderTexture(txt1, SCREEN_WIDTH / 2 - 150, 250);
+        graphics.renderTexture(txt2, SCREEN_WIDTH / 2 - 150, 320);
+
+        SDL_DestroyTexture(txt1);
+        SDL_DestroyTexture(txt2);
     }
 
-    void quit() {
-        SDL_DestroyTexture(sky); sky = nullptr;
-        SDL_DestroyTexture(mountain); mountain = nullptr;
-        tilemap.quit();
-        SDL_DestroyTexture(bg);
+    void renderBattle(Graphics& graphics) {
+        player.render(graphics);
+        boss.render(graphics);
     }
 };
 
