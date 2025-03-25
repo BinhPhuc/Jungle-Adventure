@@ -32,7 +32,6 @@
 			<Add option="-Wall" />
 		</Compiler>
 		<Unit filename="boss.h" />
-		<Unit filename="camera.h" />
 		<Unit filename="defs.h" />
 		<Unit filename="flyingdemon.h" />
 		<Unit filename="game.h" />
