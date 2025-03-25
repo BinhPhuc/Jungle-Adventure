@@ -212,20 +212,7 @@ struct Graphics {
         SDL_RendererFlip flipFlag = flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
         SDL_RenderCopyEx(renderer, sprite.texture, clip, &renderQuad, 0, NULL, flipFlag);
     }
-    void renderBackgroundLayer(SDL_Texture* texture, int camX, float speedRatio) {
-        int bgWidth, bgHeight;
-        SDL_QueryTexture(texture, NULL, NULL, &bgWidth, &bgHeight);
 
-        int x = -(int)(camX * speedRatio) % bgWidth;
-        SDL_Rect src = { 0, 0, bgWidth, bgHeight };
-        SDL_Rect dest = { x, 0, bgWidth, bgHeight };
-        SDL_RenderCopy(renderer, texture, &src, &dest);
-
-        if (x + bgWidth < SCREEN_WIDTH) {
-            dest.x = x + bgWidth;
-            SDL_RenderCopy(renderer, texture, &src, &dest);
-        }
-    }
 };
 
 #endif // _GRAPHICS__H

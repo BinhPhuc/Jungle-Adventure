@@ -5,7 +5,7 @@
 	<SDL_image.h>
 	"graphics.h"
 
-1742879283 f:\game\game\graphics.h
+1742885466 f:\game\game\graphics.h
 	<SDL.h>
 	<SDL_image.h>
 	<SDL_ttf.h>
@@ -28,7 +28,7 @@
 
 1742674545 f:\game\game\logic.h
 
-1742876431 f:\game\game\menu.h
+1742882814 f:\game\game\menu.h
 	<SDL.h>
 	<string>
 	<vector>
@@ -46,7 +46,7 @@
 	<fstream>
 	"graphics.h"
 
-1742880958 f:\game\game\game.h
+1742885466 f:\game\game\game.h
 	"graphics.h"
 	"player.h"
 	"boss.h"
@@ -78,4 +78,10 @@
 	"graphics.h"
 	<SDL.h>
 	<map>
+
+1742885364 f:\game\game\stage_preview.h
+	"graphics.h"
+	<SDL.h>
+	<string>
+	<vector>
 
