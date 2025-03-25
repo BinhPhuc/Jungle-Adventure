@@ -113,7 +113,7 @@ public:
         stageBackgrounds.push_back(graphics.loadTexture("assets/imgs/stage2.png")); // Stage 2 (giả định)
 
         // Tải nhạc
-        menuMusic = graphics.loadMusic("assets/music/menu_music.mp3");
+        menuMusic = graphics.loadMusic("assets/music/menu_music.wav");
         battleMusic = graphics.loadMusic("assets/music/battle_music.mp3");
         clickSound = graphics.loadSound("assets/sounds/click.wav");
 
@@ -215,6 +215,7 @@ private:
                 }
             }
         } else if (state == PREVIEW_CHARACTER) {
+
             readyHovered = inRect(mx, my, readyBtn);
             backHovered = inRect(mx, my, backBtn);
             if (e.type == SDL_MOUSEBUTTONDOWN) {
@@ -223,6 +224,7 @@ private:
                     state = CHOOSE_STAGE;
                 } else if (backHovered) {
                     graphics.play(clickSound);
+
                     state = CHOOSE_CHARACTER;
                 }
             }
@@ -249,6 +251,7 @@ private:
         } else if (state == PREVIEW_STAGE) {
             readyHovered = inRect(mx, my, readyBtn);
             backHovered = inRect(mx, my, backBtn);
+
             if (e.type == SDL_MOUSEBUTTONDOWN) {
                 if (readyHovered) {
                     graphics.play(clickSound);
@@ -277,7 +280,19 @@ private:
         SDL_SetRenderDrawColor(graphics.renderer, 0, 0, 0, 100);
         SDL_Rect overlay = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
         SDL_RenderFillRect(graphics.renderer, &overlay);
-
+        if (state == CHOOSE_CHARACTER || state == CHOOSE_STAGE) {
+            SDL_Color titleColor = {255, 255, 0}; // Màu vàng
+            std::string text = (state == CHOOSE_CHARACTER) ? "Choose Your Character" : "Choose Stage";
+            SDL_Texture* titleTex = graphics.renderText(text.c_str(), titleFont, titleColor);
+            if (titleTex) {
+                int tw, th;
+                SDL_QueryTexture(titleTex, NULL, NULL, &tw, &th);
+                int tx = (SCREEN_WIDTH - tw) / 2; // Căn giữa theo chiều ngang
+                int ty = 80; // Vị trí y = 80
+                graphics.renderTexture(titleTex, tx, ty);
+                SDL_DestroyTexture(titleTex);
+            }
+        }
         if (state == CHOOSE_CHARACTER || state == PREVIEW_CHARACTER) {
             renderCharacterButtons(graphics);
         }
@@ -431,6 +446,8 @@ private:
     }
 
     void renderStagePreview(Graphics& graphics) {
+
+
         const StagePreview& preview = stagePreviews[selectedStage];
 
         SDL_Rect previewBox = {800, 100, 400, 500};
@@ -538,7 +555,7 @@ private:
 
         // Cập nhật đạn của Boss
         for (auto it = bossProjectiles.begin(); it != bossProjectiles.end();) {
-            it->x -= 3; // Đạn di chuyển sang trái
+            it->x -= 3; // Giảm tốc độ đạn từ 5 xuống 3 pixel mỗi frame
             if (it->x < 0) {
                 it = bossProjectiles.erase(it);
             } else {
@@ -554,10 +571,16 @@ private:
         }
 
         // Kiểm tra va chạm cận chiến của Warrior với Boss
-        if (player->getState() == PlayerState::ATTACK1 || player->getState() == PlayerState::ATTACK2 || player->getState() == PlayerState::ATTACK3) {
+        static Uint32 lastAttackTime = 0; // Theo dõi thời gian lần tấn công cuối cùng
+        if (player->getState() == PlayerState::ATTACK1) {
             float distance = std::abs(player->getX() - boss->getX());
-            if (distance < 100) { // Khoảng cách tấn công cận chiến
-                boss->takeDamage(player->getAttackDamage());
+            if (distance < 300) { // Tăng khoảng cách tấn công lên 300 pixel
+                Uint32 currentTime = SDL_GetTicks();
+                // Chỉ gây sát thương nếu đã qua 1 giây kể từ lần tấn công cuối
+                if (currentTime - lastAttackTime >= 1000) { // 1000ms = 1 giây
+                    boss->takeDamage(player->getAttackDamage());
+                    lastAttackTime = currentTime;
+                }
             }
         }
 

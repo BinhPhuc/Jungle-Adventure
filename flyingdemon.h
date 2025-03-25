@@ -15,7 +15,7 @@ public:
     void init(Graphics& graphics, float startX, float startY, int stage) override {
         x = startX;
         y = startY;
-        hp = 1000;
+        hp = 50;
         state = BossState::FLYING;
 
         // Tải sprite cho từng hành động từ các file riêng biệt

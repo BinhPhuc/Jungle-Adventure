@@ -13,7 +13,6 @@ private:
     int attackDamage = 10;
     float attackSpeed = 1.0f; // Tấn công mỗi 1 giây
     Uint32 lastAttackTime = 0;
-    int attackCombo = 0; // Theo dõi combo tấn công (1 → 2 → 3)
     float groundLevel = 550.0f; // Tọa độ y của mặt đất (điều chỉnh theo background)
 
     // Thêm biến cho thanh nộ
@@ -33,9 +32,7 @@ public:
         SDL_Texture* runTex = graphics.loadTexture("assets/sprites/warrior/RUN.png");
         SDL_Texture* jumpTex = graphics.loadTexture("assets/sprites/warrior/JUMP.png");
         SDL_Texture* hurtTex = graphics.loadTexture("assets/sprites/warrior/HURT.png");
-        SDL_Texture* attack1Tex = graphics.loadTexture("assets/sprites/warrior/ATTACK1.png");
-        SDL_Texture* attack2Tex = graphics.loadTexture("assets/sprites/warrior/ATTACK2.png");
-        SDL_Texture* attack3Tex = graphics.loadTexture("assets/sprites/warrior/ATTACK3.png");
+        SDL_Texture* attackTex = graphics.loadTexture("assets/sprites/warrior/ATTACK1.png"); // Chỉ giữ ATTACK1
         SDL_Texture* deathTex = graphics.loadTexture("assets/sprites/warrior/DEATH.png");
 
         // Khởi tạo sprite cho từng hành động
@@ -44,9 +41,7 @@ public:
         sprites[PlayerState::RUN].initAuto(runTex, 96, 84, 8);
         sprites[PlayerState::JUMP].initAuto(jumpTex, 96, 84, 5);
         sprites[PlayerState::HURT].initAuto(hurtTex, 96, 84, 4);
-        sprites[PlayerState::ATTACK1].initAuto(attack1Tex, 96, 84, 6);
-        sprites[PlayerState::ATTACK2].initAuto(attack2Tex, 96, 84, 5);
-        sprites[PlayerState::ATTACK3].initAuto(attack3Tex, 96, 84, 6);
+        sprites[PlayerState::ATTACK1].initAuto(attackTex, 96, 84, 6);
         sprites[PlayerState::DEATH].initAuto(deathTex, 96, 84, 12);
 
         // Điều chỉnh tốc độ animation
@@ -54,8 +49,6 @@ public:
             pair.second.frameDelay = 100; // 100ms mỗi frame
         }
         sprites[PlayerState::ATTACK1].frameDelay = 150; // Tấn công chậm hơn
-        sprites[PlayerState::ATTACK2].frameDelay = 150;
-        sprites[PlayerState::ATTACK3].frameDelay = 150;
         sprites[PlayerState::DEATH].frameDelay = 200; // Chết chậm hơn
 
         // Khởi tạo thanh nộ
@@ -103,10 +96,7 @@ public:
                 case SDLK_j: { // Tấn công
                     Uint32 currentTime = SDL_GetTicks();
                     if (currentTime - lastAttackTime >= attackSpeed * 1000) {
-                        attackCombo = (attackCombo + 1) % 3; // Chuyển qua ATTACK1 -> ATTACK2 -> ATTACK3
-                        if (attackCombo == 0) setState(PlayerState::ATTACK1);
-                        else if (attackCombo == 1) setState(PlayerState::ATTACK2);
-                        else setState(PlayerState::ATTACK3);
+                        setState(PlayerState::ATTACK1); // Chỉ sử dụng ATTACK1
                         lastAttackTime = currentTime;
                     }
                     break;
@@ -163,7 +153,7 @@ public:
         if (x > SCREEN_WIDTH - 96) x = SCREEN_WIDTH - 96;
 
         // Cập nhật trạng thái dựa trên vận tốc (nếu không nhảy và không tấn công)
-        if (!isJumping && state != PlayerState::ATTACK1 && state != PlayerState::ATTACK2 && state != PlayerState::ATTACK3 && state != PlayerState::HURT) {
+        if (!isJumping && state != PlayerState::ATTACK1 && state != PlayerState::HURT) {
             if (vx != 0) {
                 if (std::abs(vx) > 5.0f) {
                     setState(PlayerState::RUN);
@@ -181,8 +171,6 @@ public:
 
         // Quay lại trạng thái IDLE sau khi hoàn thành ATTACK hoặc HURT
         if ((state == PlayerState::ATTACK1 && sprites[state].currentFrame == sprites[state].clips.size() - 1) ||
-            (state == PlayerState::ATTACK2 && sprites[state].currentFrame == sprites[state].clips.size() - 1) ||
-            (state == PlayerState::ATTACK3 && sprites[state].currentFrame == sprites[state].clips.size() - 1) ||
             (state == PlayerState::HURT && sprites[state].currentFrame == sprites[state].clips.size() - 1)) {
             if (!isJumping) setState(PlayerState::IDLE);
         }
@@ -212,9 +200,11 @@ public:
     PlayerState getState() const override { return state; }
     int getAttackDamage() const override { return attackDamage; }
 
+    // Thêm hàm để lấy giá trị thanh nộ
     float getRage() const { return rage; }
 
 private:
+    // Hàm helper để đặt trạng thái và đặt lại frame animation
     void setState(PlayerState newState) {
         if (state != newState) {
             state = newState;
