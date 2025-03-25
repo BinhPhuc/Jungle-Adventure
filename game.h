@@ -10,6 +10,7 @@
 #include <string>
 #include <sstream>
 #include <fstream>
+#include <cmath>
 
 enum GameState {
     CHOOSE_CHARACTER,
@@ -51,6 +52,12 @@ struct Platform {
     SDL_Texture* texture = nullptr;
 };
 
+struct Chest {
+    SDL_Rect rect;
+    Sprite sprite;
+    bool isOpened = false;
+};
+
 class Game {
 private:
     GameState state = CHOOSE_CHARACTER;
@@ -65,6 +72,7 @@ private:
     Mix_Music* menuMusic = nullptr;
     Mix_Music* battleMusic = nullptr;
     Mix_Chunk* clickSound = nullptr;
+    Mix_Chunk* errorClick = nullptr;
 
     std::vector<CharacterButton> characterButtons;
     std::vector<CharacterPreview> characterPreviews;
@@ -92,6 +100,14 @@ private:
     std::vector<Platform> platforms; // Danh sách các thanh ngang
     bool bossDefeated = false; // Theo dõi xem boss đã bị hạ chưa
 
+    Chest chest;
+
+    int coins = 0;
+    SDL_Rect buyHPBtn = {120, 20, 150, 50};  // Nút mua HP (bên cạnh chữ Coins)
+    SDL_Rect buyATKBtn = {280, 20, 150, 50};// Nút mua ATK (xếp dọc dưới HP)
+    bool buyHPHovered = false;
+    bool buyATKHovered = false;
+
 public:
     void init(Graphics& graphics) {
         font = graphics.loadFont("assets/font/Coiny-Regular.ttf", 24);
@@ -99,16 +115,20 @@ public:
         titleFont = graphics.loadFont("assets/font/Coiny-Regular.ttf", 48);
 
         Platform platform1;
-        platform1.rect = {400, 400, 200, 20}; // Vị trí và kích thước
+        platform1.rect = {400, 400, 154, 53}; // Vị trí và kích thước
         platform1.texture = graphics.loadTexture("assets/imgs/platform.png"); // Sprite cho platform
         platforms.push_back(platform1);
 
         Platform platform2;
-        platform2.rect = {700, 300, 200, 20}; // Thanh thứ hai
+        platform2.rect = {700, 300, 154, 53}; // Thanh thứ hai
         platform2.texture = graphics.loadTexture("assets/imgs/platform.png");
         platforms.push_back(platform2);
 
-        // Đọc tên người chơi từ file config.txt
+        chest.rect = {750, 250, 48, 48}; // Vị trí trên platform2
+        SDL_Texture* chestTex = graphics.loadTexture("assets/sprites/chest.png");
+        chest.sprite.initAuto(chestTex, 96, 96, 3); // 2 frame: đóng và mở
+        chest.sprite.frameDelay = 100;
+
         std::ifstream configFile("config.txt");
         if (configFile.is_open()) {
             std::string line;
@@ -134,6 +154,7 @@ public:
         menuMusic = graphics.loadMusic("assets/music/menu_music.wav");
         battleMusic = graphics.loadMusic("assets/music/battle_music.mp3");
         clickSound = graphics.loadSound("assets/sounds/click.wav");
+        errorClick = graphics.loadSound("assets/sounds/error.mp3");
 
         // Khởi tạo các nút chọn nhân vật
         characterButtons.push_back({"Warrior", {100, 250, 200, 80}});
@@ -169,6 +190,8 @@ public:
         if (menuMusic) {
             graphics.play(menuMusic);
         }
+
+        coins = loadCoins();
     }
 
     GameState run(Graphics& graphics) {
@@ -197,6 +220,65 @@ public:
     }
 
 private:
+    void addCoins(int amount) {
+        int totalCoins = loadCoins() + amount;
+        std::ofstream out("coins.txt");
+        if (out) {
+            out << totalCoins << std::endl;
+            out.close();
+        }
+        coins = totalCoins;
+    }
+
+    int loadCoins() {
+        std::ifstream in("coins.txt");
+        int coins = 0;
+        if (in) {
+            in >> coins;
+            in.close();
+        }
+        return coins;
+    }
+    void renderShopUI(Graphics& graphics) {
+        int mx, my;
+        SDL_GetMouseState(&mx, &my);
+        buyHPHovered = inRect(mx, my, buyHPBtn);
+        buyATKHovered = inRect(mx, my, buyATKBtn);
+
+        // Hiển thị số xu ở (0, 0)
+        std::string coinStr = "Coins: " + std::to_string(coins);
+        SDL_Texture* coinTex = graphics.renderText(coinStr.c_str(), font, normalTextColor);
+        if (coinTex) {
+            int tw, th;
+            SDL_QueryTexture(coinTex, NULL, NULL, &tw, &th);
+            graphics.renderTexture(coinTex, 0, 40); // Đặt ở (0, 0)
+            SDL_DestroyTexture(coinTex);
+        }
+
+        // Nút mua HP ở (100, 0)
+        SDL_Color hpColor = buyHPHovered ? hoverTextColor : normalTextColor;
+        SDL_SetRenderDrawColor(graphics.renderer, normalBoxColor.r, normalBoxColor.g, normalBoxColor.b, normalBoxColor.a);
+        SDL_RenderFillRect(graphics.renderer, &buyHPBtn);
+        SDL_Texture* hpTex = graphics.renderText("HP (+10)", font, hpColor);
+        if (hpTex) {
+            int tw, th;
+            SDL_QueryTexture(hpTex, NULL, NULL, &tw, &th);
+            graphics.renderTexture(hpTex, buyHPBtn.x + (buyHPBtn.w - tw) / 2, buyHPBtn.y + (buyHPBtn.h - th) / 2);
+            SDL_DestroyTexture(hpTex);
+        }
+
+        // Nút mua ATK ở (260, 0)
+        SDL_Color atkColor = buyATKHovered ? hoverTextColor : normalTextColor;
+        SDL_SetRenderDrawColor(graphics.renderer, normalBoxColor.r, normalBoxColor.g, normalBoxColor.b, normalBoxColor.a);
+        SDL_RenderFillRect(graphics.renderer, &buyATKBtn);
+        SDL_Texture* atkTex = graphics.renderText("ATK (+3)", font, atkColor);
+        if (atkTex) {
+            int tw, th;
+            SDL_QueryTexture(atkTex, NULL, NULL, &tw, &th);
+            graphics.renderTexture(atkTex, buyATKBtn.x + (buyATKBtn.w - tw) / 2, buyATKBtn.y + (buyATKBtn.h - th) / 2);
+            SDL_DestroyTexture(atkTex);
+        }
+    }
     void fadeOut(Graphics& graphics) {
         SDL_Rect screenRect = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
         for (int alpha = 0; alpha <= 255; alpha += 5) {
@@ -233,7 +315,6 @@ private:
                 }
             }
         } else if (state == PREVIEW_CHARACTER) {
-
             readyHovered = inRect(mx, my, readyBtn);
             backHovered = inRect(mx, my, backBtn);
             if (e.type == SDL_MOUSEBUTTONDOWN) {
@@ -246,6 +327,7 @@ private:
                     state = CHOOSE_CHARACTER;
                 }
             }
+
         } else if (state == CHOOSE_STAGE) {
             for (auto& btn : stageButtons) {
                 btn.isHovered = inRect(mx, my, btn.rect);
@@ -269,6 +351,8 @@ private:
         } else if (state == PREVIEW_STAGE) {
             readyHovered = inRect(mx, my, readyBtn);
             backHovered = inRect(mx, my, backBtn);
+            buyHPHovered = inRect(mx, my, buyHPBtn);
+            buyATKHovered = inRect(mx, my, buyATKBtn);
 
             if (e.type == SDL_MOUSEBUTTONDOWN) {
                 if (readyHovered) {
@@ -278,6 +362,26 @@ private:
                 } else if (backHovered) {
                     graphics.play(clickSound);
                     state = CHOOSE_STAGE;
+                } else if (buyHPHovered && coins >= 10) {
+                    coins -= 10;
+                    Warrior* warrior = dynamic_cast<Warrior*>(player);
+                    if (warrior) {
+                        warrior->setHP(warrior->getHP() + 10); // Tăng HP
+                    }
+                    addCoins(-10);
+                    graphics.play(clickSound);
+                } else if (buyATKHovered && coins >= 10) {
+                    coins -= 10;
+                    Warrior* warrior = dynamic_cast<Warrior*>(player);
+                    if (warrior) {
+                        warrior->setAttackDamage(warrior->getAttackDamage() + 3); // Tăng ATK +3
+                    }
+                    addCoins(-10);
+                    graphics.play(clickSound);
+                } else if (buyHPHovered && coins < 10) {
+                    graphics.play(errorClick);
+                } else if (buyATKHovered && coins < 10) {
+                    graphics.play(errorClick);
                 }
             }
         } else if (state == IN_BATTLE) {
@@ -286,7 +390,7 @@ private:
             if (e.type == SDL_KEYDOWN || e.type == SDL_MOUSEBUTTONDOWN) {
                 if (SDL_GetTicks() - resultDisplayTime >= 2000) {
                     fadeOut(graphics);
-                    return RETURN_TO_MENU;
+                    state = PREVIEW_STAGE;
                 }
             }
         }
@@ -526,6 +630,7 @@ private:
             graphics.renderTexture(backTex, backBtn.x + (backBtn.w - tw) / 2, backBtn.y + (backBtn.h - th) / 2);
             SDL_DestroyTexture(backTex);
         }
+        renderShopUI(graphics);
     }
 
     void enterBattle(Graphics& graphics) {
@@ -578,7 +683,7 @@ private:
             for (const auto& platform : platforms) {
                 SDL_Rect playerRect = {static_cast<int>(warrior->getX()), static_cast<int>(y), 96, 84};
                 if (SDL_HasIntersection(&playerRect, &platform.rect) && jumpVelocity > 0) {
-                    y = platform.rect.y - 84; // Đặt nhân vật trên platform
+                    y = platform.rect.y - 155; // Đặt nhân vật trên platform
                     warrior->setY(y);
                     jumpVelocity = 0;
                     warrior->getIsJumping() = false; // Cần thêm getter/setter trong warrior.h
@@ -619,12 +724,27 @@ private:
             }
         }
 
-        // Kiểm tra điều kiện thắng/thua
-        if (boss->getHP() <= 0 && boss->getState() == BossState::DEATH) {
-            state = VICTORY;
-            resultDisplayTime = SDL_GetTicks();
+        // Khi boss chết, đánh dấu bossDefeated và bắt đầu đếm thời gian
+        static Uint32 bossDefeatedTime = 0;
+        if (boss->getHP() <= 0 && boss->getState() == BossState::DEATH && !bossDefeated) {
             bossDefeated = true;
-        } else if (player->getHP() <= 0 && player->getState() == PlayerState::DEATH) {
+            bossDefeatedTime = SDL_GetTicks(); // Ghi lại thời điểm boss chết
+        }
+
+        // Sau 5 giây kể từ khi boss chết, tự động mở rương và chuyển sang VICTORY
+        if (bossDefeated && !chest.isOpened) {
+            Uint32 currentTime = SDL_GetTicks();
+            if (currentTime - bossDefeatedTime >= 5000) { // 5000ms = 5 giây
+                chest.isOpened = true;
+                chest.sprite.currentFrame = 2; // Chuyển sang frame mở
+                addCoins(5); // Thêm 5 xu
+                state = VICTORY;
+                resultDisplayTime = SDL_GetTicks();
+            }
+        }
+
+        // Kiểm tra thua
+        if (player->getHP() <= 0 && player->getState() == PlayerState::DEATH) {
             state = GAME_OVER;
             resultDisplayTime = SDL_GetTicks();
         }
@@ -636,7 +756,9 @@ private:
         }
         player->render(graphics);
         boss->render(graphics);
-
+        if (bossDefeated) {
+            graphics.renderSprite(chest.rect.x, chest.rect.y, chest.sprite, false, 1.0f); // Vẽ rương
+        }
         // Vẽ đạn của Boss
         for (const auto& projectile : bossProjectiles) {
             boss->renderProjectile(graphics, projectile);
@@ -647,47 +769,102 @@ private:
     }
 
     void renderHealthBars(Graphics& graphics) {
-        // Thanh máu của Player
-        int healthBarY = 60; // Dịch xuống để có chỗ cho tên
+        int baseY = 20; // Vị trí y cơ sở
 
         // Hiển thị tên người chơi
         SDL_Texture* nameTex = graphics.renderText(playerName.c_str(), font, normalTextColor);
         if (nameTex) {
             int tw, th;
             SDL_QueryTexture(nameTex, NULL, NULL, &tw, &th);
-            graphics.renderTexture(nameTex, 20, 20); // Không cần khoảng trống cho ảnh
+            graphics.renderTexture(nameTex, 20, baseY);
             SDL_DestroyTexture(nameTex);
         }
 
-        // Thanh máu của Player
-        SDL_Rect playerHealthBar = {20, healthBarY, player->getHP() * 2, 20};
+        // HP: Số HP + Thanh HP
+        int healthBarY = baseY + 30; // Dịch xuống dưới tên
+        std::string hpStr = "HP: " + std::to_string(player->getHP());
+        SDL_Texture* hpTex = graphics.renderText(hpStr.c_str(), font, normalTextColor);
+        int hpTextWidth = 0;
+        if (hpTex) {
+            int tw, th;
+            SDL_QueryTexture(hpTex, NULL, NULL, &tw, &th);
+            hpTextWidth = tw;
+            graphics.renderTexture(hpTex, 20, healthBarY);
+            SDL_DestroyTexture(hpTex);
+        }
+        SDL_Rect playerHealthBar = {20 + hpTextWidth + 30, healthBarY, player->getHP() * 2, 20};
         SDL_SetRenderDrawColor(graphics.renderer, 0, 255, 0, 255); // Màu xanh lá
         SDL_RenderFillRect(graphics.renderer, &playerHealthBar);
 
-        // Thanh nộ của Player
-        Warrior* warrior = dynamic_cast<Warrior*>(player); // Ép kiểu để truy cập getRage
+        // ATK: Số ATK
+        int atkY = healthBarY + 30;
+        std::string atkStr = "ATK: " + std::to_string(player->getAttackDamage());
+        SDL_Texture* atkTex = graphics.renderText(atkStr.c_str(), font, normalTextColor);
+        if (atkTex) {
+            int tw, th;
+            SDL_QueryTexture(atkTex, NULL, NULL, &tw, &th);
+            graphics.renderTexture(atkTex, 20, atkY);
+            SDL_DestroyTexture(atkTex);
+        }
+
+        // Rage: Số Rage + Thanh nộ
+        Warrior* warrior = dynamic_cast<Warrior*>(player);
+        int rageY = atkY + 30;
         if (warrior) {
-            SDL_Rect rageBar = {20, healthBarY + 25, static_cast<int>(warrior->getRage() * 2), 10}; // Chiều cao nhỏ hơn
-            SDL_SetRenderDrawColor(graphics.renderer, 255, 165, 0, 255); // Màu cam cho thanh nộ
+            std::string rageStr = "Rage: " + std::to_string(static_cast<int>(warrior->getRage())) + "%";
+            SDL_Texture* rageTex = graphics.renderText(rageStr.c_str(), font, normalTextColor);
+            int rageTextWidth = 0;
+            if (rageTex) {
+                int tw, th;
+                SDL_QueryTexture(rageTex, NULL, NULL, &tw, &th);
+                rageTextWidth = tw;
+                graphics.renderTexture(rageTex, 20, rageY);
+                SDL_DestroyTexture(rageTex);
+            }
+            SDL_Rect rageBar = {20 + rageTextWidth + 30, rageY, static_cast<int>(warrior->getRage() * 2), 10};
+            SDL_SetRenderDrawColor(graphics.renderer, 255, 165, 0, 255); // Màu cam
             SDL_RenderFillRect(graphics.renderer, &rageBar);
         }
 
-        // Thanh máu của Boss
+        // Thanh máu và thông tin của Boss
+        int bossBaseY = 20; // Vị trí y cơ sở cho Boss
+
         // Hiển thị tên Boss
         const StagePreview& preview = stagePreviews[selectedStage];
         SDL_Texture* bossNameTex = graphics.renderText(preview.bossName.c_str(), font, normalTextColor);
         if (bossNameTex) {
             int tw, th;
             SDL_QueryTexture(bossNameTex, NULL, NULL, &tw, &th);
-            graphics.renderTexture(bossNameTex, SCREEN_WIDTH - 20 - tw, 20); // Không cần khoảng trống cho ảnh
-            std::cout << tw  << "\n";
+            graphics.renderTexture(bossNameTex, SCREEN_WIDTH - 20 - tw, bossBaseY);
             SDL_DestroyTexture(bossNameTex);
         }
 
-        // Thanh máu của Boss
-        SDL_Rect bossHealthBar = {SCREEN_WIDTH - boss->getHP() * 2 - 20, healthBarY, boss->getHP() * 2, 20};
+        // HP: Số HP + Thanh HP của Boss
+        int bossHealthBarY = bossBaseY + 30;
+        std::string bossHpStr = "HP: " + std::to_string(boss->getHP());
+        SDL_Texture* bossHpTex = graphics.renderText(bossHpStr.c_str(), font, normalTextColor);
+        int bossHpTextWidth = 0;
+        if (bossHpTex) {
+            int tw, th;
+            SDL_QueryTexture(bossHpTex, NULL, NULL, &tw, &th);
+            bossHpTextWidth = tw;
+            graphics.renderTexture(bossHpTex, SCREEN_WIDTH - 20 - bossHpTextWidth, bossHealthBarY);
+            SDL_DestroyTexture(bossHpTex);
+        }
+        SDL_Rect bossHealthBar = {SCREEN_WIDTH - 20 - bossHpTextWidth - boss->getHP() * 2 - 10, bossHealthBarY, boss->getHP() * 2, 20};
         SDL_SetRenderDrawColor(graphics.renderer, 255, 0, 0, 255); // Màu đỏ
         SDL_RenderFillRect(graphics.renderer, &bossHealthBar);
+
+        // ATK: Số ATK của Boss
+        int bossAtkY = bossHealthBarY + 30;
+        std::string bossAtkStr = "ATK: " + std::to_string(boss->getAttackDamage());
+        SDL_Texture* bossAtkTex = graphics.renderText(bossAtkStr.c_str(), font, normalTextColor);
+        if (bossAtkTex) {
+            int tw, th;
+            SDL_QueryTexture(bossAtkTex, NULL, NULL, &tw, &th);
+            graphics.renderTexture(bossAtkTex, SCREEN_WIDTH - 20 - tw, bossAtkY);
+            SDL_DestroyTexture(bossAtkTex);
+        }
     }
 
     void renderResult(Graphics& graphics, const std::string& message) {

@@ -198,12 +198,9 @@ public:
     float getX() const override { return x; }
     float getY() const override { return y; }
     void setY(float newY) override { y = newY; }
-    int getHP() const override { return hp; }
-    void setHP(int newHP) override { hp = newHP; }
-    int getAttackDamage() const override { return attackDamage; }
-    void setAttackDamage(int newDamage) { attackDamage = newDamage; }
 
     PlayerState getState() const override { return state; }
+    int getAttackDamage() const override { return attackDamage; }
     float& getJumpVelocity() { return jumpVelocity; }
     bool& getIsJumping() { return isJumping; }
     // Thêm hàm để lấy giá trị thanh nộ

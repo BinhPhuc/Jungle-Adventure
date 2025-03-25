@@ -47,7 +47,6 @@ public:
     }
 
     virtual int getHP() const { return hp; }
-    virtual void setHP(int newHP) { hp = newHP; }
     virtual void takeDamage(int damage) {
         if (state == PlayerState::DEATH) return;
         hp -= damage;
@@ -60,7 +59,6 @@ public:
     }
     virtual float getX() const { return x; }
     virtual float getY() const { return y; }
-    virtual void setY(float newY) { y = newY; }
     virtual PlayerState getState() const { return state; }
     virtual int getAttackDamage() const { return 10; }
 };

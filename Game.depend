@@ -46,7 +46,7 @@
 	<fstream>
 	"graphics.h"
 
-1742915574 f:\game\game\game.h
+1742929410 f:\game\game\game.h
 	"graphics.h"
 	"player.h"
 	"warrior.h"
@@ -56,6 +56,7 @@
 	<string>
 	<sstream>
 	<fstream>
+	<cmath>
 
 1742874084 f:\game\game\knight.h
 	"graphics.h"
@@ -74,7 +75,7 @@
 	"graphics.h"
 	"camera.h"
 
-1742915396 f:\game\game\player.h
+1742917933 f:\game\game\player.h
 	"graphics.h"
 	<SDL.h>
 	<map>
@@ -91,7 +92,7 @@
 	<string>
 	<vector>
 
-1742915504 f:\game\game\warrior.h
+1742926160 f:\game\game\warrior.h
 	"player.h"
 
 1742913340 f:\game\game\flyingdemon.h
