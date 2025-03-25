@@ -1,62 +1,66 @@
-
-#ifndef PLAYER_H
-#define PLAYER_H
+#ifndef _PLAYER__H
+#define _PLAYER__H
 
 #include "graphics.h"
 #include <SDL.h>
 #include <map>
+#include <vector>
 
-enum PlayerState {
-    PLAYER_IDLE,
-    PLAYER_WALK,
-    // sau sẽ thêm ATTACK, JUMP, DEAD, v.v.
+enum class PlayerState {
+    IDLE,
+    WALK,
+    RUN,
+    JUMP,
+    HURT,
+    ATTACK1,
+    ATTACK2,
+    ATTACK3,
+    DEATH
 };
 
 class Player {
-private:
-    int x = 100;
-    int y = 500;
-    int vx = 0;
+protected:
+    float x = 100;
+    float y = 600;
     bool facingLeft = false;
-
-    PlayerState state = PLAYER_IDLE;
+    int hp = 150;
+    PlayerState state = PlayerState::IDLE;
     std::map<PlayerState, Sprite> sprites;
 
 public:
-    void init(Graphics& graphics) {
-        SDL_Texture* idleTex = graphics.loadTexture("assets/player/Idle.png");
-        SDL_Texture* walkTex = graphics.loadTexture("assets/player/Walk.png");
-        sprites[PLAYER_IDLE].initAuto(idleTex, 72, 86, 4);
-        sprites[PLAYER_WALK].initAuto(walkTex, 72, 86, 8);
+    virtual void init(Graphics& graphics) {
     }
 
-    void handleEvent(const SDL_Event& e) {
-        if (e.type == SDL_KEYDOWN && e.key.repeat == 0) {
-            if (e.key.keysym.sym == SDLK_LEFT) {
-                vx = -4;
-                facingLeft = true;
-            } else if (e.key.keysym.sym == SDLK_RIGHT) {
-                vx = 4;
-                facingLeft = false;
-            }
-        } else if (e.type == SDL_KEYUP && e.key.repeat == 0) {
-            if (e.key.keysym.sym == SDLK_LEFT || e.key.keysym.sym == SDLK_RIGHT) {
-                vx = 0;
-            }
-        }
+    virtual void handleEvent(const SDL_Event& e) {
     }
 
-    void update() {
-        x += vx;
-        state = (vx == 0) ? PLAYER_IDLE : PLAYER_WALK;
-
+    virtual void update() {
         Uint32 now = SDL_GetTicks();
         sprites[state].tickTimed(now);
     }
 
-    void render(Graphics& graphics) {
-        graphics.renderSprite(x, y, sprites[state], facingLeft, 1.5f);
+    virtual void render(Graphics& graphics) {
+        graphics.renderSprite(static_cast<int>(x), static_cast<int>(y), sprites[state], facingLeft, 2.f);
     }
+
+    virtual void attack(std::vector<SDL_Rect>& projectiles) {
+    }
+
+    virtual int getHP() const { return hp; }
+    virtual void takeDamage(int damage) {
+        if (state == PlayerState::DEATH) return;
+        hp -= damage;
+        if (hp <= 0) {
+            hp = 0;
+            state = PlayerState::DEATH;
+        } else {
+            state = PlayerState::HURT;
+        }
+    }
+    virtual float getX() const { return x; }
+    virtual float getY() const { return y; }
+    virtual PlayerState getState() const { return state; }
+    virtual int getAttackDamage() const { return 10; }
 };
 
 #endif

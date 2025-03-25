@@ -46,9 +46,10 @@
 	<fstream>
 	"graphics.h"
 
-1742889147 f:\game\game\game.h
+1742897671 f:\game\game\game.h
 	"graphics.h"
 	"player.h"
+	"warrior.h"
 	"boss.h"
 	<vector>
 	<string>
@@ -71,14 +72,15 @@
 	"graphics.h"
 	"camera.h"
 
-1742879379 f:\game\game\player.h
+1742897885 f:\game\game\player.h
 	"graphics.h"
 	<SDL.h>
 	<map>
+	<vector>
 
-1742880148 f:\game\game\boss.h
+1742898008 f:\game\game\boss.h
 	"graphics.h"
-	<SDL.h>
+	<vector>
 	<map>
 
 1742885364 f:\game\game\stage_preview.h
@@ -86,4 +88,7 @@
 	<SDL.h>
 	<string>
 	<vector>
+
+1742898386 f:\game\game\warrior.h
+	"player.h"
 

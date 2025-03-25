@@ -3,16 +3,33 @@
 
 #include "graphics.h"
 #include "player.h"
+#include "warrior.h"
 #include "boss.h"
 #include <vector>
 #include <string>
 #include <sstream>
 
 enum GameState {
+    CHOOSE_CHARACTER,
+    PREVIEW_CHARACTER,
     CHOOSE_STAGE,
     PREVIEW_STAGE,
     IN_BATTLE,
-    RETURN_TO_MENU
+    RETURN_TO_MENU,
+    VICTORY,
+    GAME_OVER
+};
+
+struct CharacterButton {
+    std::string label;
+    SDL_Rect rect;
+    bool isHovered = false;
+};
+
+struct CharacterPreview {
+    std::string characterName;
+    std::string description;
+    std::string characterImagePath;
 };
 
 struct StageButton {
@@ -29,25 +46,33 @@ struct StagePreview {
 
 class Game {
 private:
-    GameState state = CHOOSE_STAGE;
+    GameState state = CHOOSE_CHARACTER;
+    int selectedCharacter = -1;
     int selectedStage = -1;
 
     TTF_Font* font = nullptr;
     TTF_Font* titleFont = nullptr;
     TTF_Font* buttonFont = nullptr;
-    SDL_Texture* battleBackground = nullptr;
-    Mix_Music* battleMusic = nullptr;
+    SDL_Texture* currentBackground = nullptr; // Background hiện tại
+    std::vector<SDL_Texture*> stageBackgrounds; // Danh sách background cho từng stage
+    Mix_Music* menuMusic = nullptr; // Nhạc menu (nếu có)
+    Mix_Music* battleMusic = nullptr; // Nhạc chiến đấu
     Mix_Chunk* clickSound = nullptr;
 
+    std::vector<CharacterButton> characterButtons;
+    std::vector<CharacterPreview> characterPreviews;
     std::vector<StageButton> stageButtons;
     std::vector<StagePreview> stagePreviews;
+
     SDL_Rect readyBtn = {900, 510, 150, 50};
     SDL_Rect backBtn = {900, 570, 150, 50};
     bool readyHovered = false;
     bool backHovered = false;
 
-    Player player;
+    Player* player = nullptr;
     Boss boss;
+    std::vector<SDL_Rect> bossProjectiles;
+    Uint32 resultDisplayTime = 0;
 
     SDL_Color normalTextColor = {255, 255, 255};
     SDL_Color hoverTextColor = {100, 255, 100};
@@ -59,9 +84,27 @@ public:
         font = graphics.loadFont("assets/font/Coiny-Regular.ttf", 24);
         buttonFont = graphics.loadFont("assets/font/Coiny-Regular.ttf", 32);
         titleFont = graphics.loadFont("assets/font/Coiny-Regular.ttf", 48);
-        battleBackground = graphics.loadTexture("assets/imgs/bg.png");
+
+        // Tải background mặc định (dùng cho menu)
+        currentBackground = graphics.loadTexture("assets/imgs/bg.png");
+
+        // Tải background cho từng stage
+        stageBackgrounds.push_back(graphics.loadTexture("assets/imgs/stage1.png")); // Stage 1
+        stageBackgrounds.push_back(graphics.loadTexture("assets/imgs/stage2.png")); // Stage 2 (giả định)
+
+        // Tải nhạc
+        menuMusic = graphics.loadMusic("assets/music/menu_music.mp3"); // Giả định có nhạc menu
         battleMusic = graphics.loadMusic("assets/music/battle_music.mp3");
         clickSound = graphics.loadSound("assets/sounds/click.wav");
+
+        // Khởi tạo các nút chọn nhân vật
+        characterButtons.push_back({"Warrior", {100, 250, 200, 80}});
+        characterButtons.push_back({"Mage", {100, 350, 200, 80}});
+        characterButtons.push_back({"Back", {100, 450, 200, 80}});
+
+        // Khởi tạo thông tin preview cho từng nhân vật
+        characterPreviews.push_back({"Warrior", "A brave warrior with a mighty sword.", "assets/characters/warrior.png"});
+        characterPreviews.push_back({"Mage", "A powerful mage with magical spells.", "assets/characters/mage.png"});
 
         // Khởi tạo các nút chọn stage
         stageButtons.push_back({"Stage 1", {100, 250, 200, 80}});
@@ -69,8 +112,10 @@ public:
         stageButtons.push_back({"Back", {100, 450, 200, 80}});
 
         // Khởi tạo thông tin preview cho từng stage
-        stagePreviews.push_back({"Flying Demon", "A fierce flying demon lurking in the shadows.", "assets/boss/boss_flying_demon.png"});
-        stagePreviews.push_back({"Mystery Creature", "A mysterious creature with unknown powers.", "assets/boss/boss2.png"});
+        stagePreviews.push_back({"Flying Demon", "A fierce flying demon lurking in the shadows.",
+                                "assets/sprites/flying_demon/boss_flying_demon.png"});
+        stagePreviews.push_back({"Mystery Creature", "A mysterious creature with unknown powers.",
+                                "assets/boss/boss2.png"});
 
         // Điều chỉnh vị trí của nút READY và BACK để nằm cạnh nhau
         int btnWidth = 150;
@@ -82,6 +127,11 @@ public:
 
         readyBtn = {startX, btnY, btnWidth, btnHeight};
         backBtn = {startX + btnWidth + spacing, btnY, btnWidth, btnHeight};
+
+        // Phát nhạc menu (nếu có)
+        if (menuMusic) {
+            graphics.play(menuMusic);
+        }
     }
 
     GameState run(Graphics& graphics) {
@@ -101,7 +151,7 @@ public:
                 }
             }
 
-            graphics.prepareScene(battleBackground);
+            graphics.prepareScene(currentBackground); // Sử dụng background hiện tại
             render(graphics);
             graphics.presentScene();
             SDL_Delay(16);
@@ -110,11 +160,54 @@ public:
     }
 
 private:
+    void fadeOut(Graphics& graphics) {
+        SDL_Rect screenRect = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+        for (int alpha = 0; alpha <= 255; alpha += 5) {
+            SDL_SetRenderDrawBlendMode(graphics.renderer, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawColor(graphics.renderer, 0, 0, 0, alpha);
+            SDL_RenderFillRect(graphics.renderer, &screenRect);
+            SDL_RenderPresent(graphics.renderer);
+            SDL_Delay(10);
+        }
+    }
+
     GameState handleEvent(SDL_Event& e, Graphics& graphics) {
         int mx, my;
         SDL_GetMouseState(&mx, &my);
 
-        if (state == CHOOSE_STAGE || state == PREVIEW_STAGE) {
+        if (state == CHOOSE_CHARACTER) {
+            for (auto& btn : characterButtons) {
+                btn.isHovered = inRect(mx, my, btn.rect);
+            }
+            if (e.type == SDL_MOUSEBUTTONDOWN) {
+                SDL_Point mousePoint = {mx, my};
+                if (SDL_PointInRect(&mousePoint, &characterButtons[0].rect)) {
+                    graphics.play(clickSound);
+                    selectedCharacter = 0;
+                    state = PREVIEW_CHARACTER;
+                } else if (SDL_PointInRect(&mousePoint, &characterButtons[1].rect)) {
+                    graphics.play(clickSound);
+                    selectedCharacter = 1;
+                    state = PREVIEW_CHARACTER;
+                } else if (SDL_PointInRect(&mousePoint, &characterButtons[2].rect)) {
+                    graphics.play(clickSound);
+                    fadeOut(graphics);
+                    return RETURN_TO_MENU;
+                }
+            }
+        } else if (state == PREVIEW_CHARACTER) {
+            readyHovered = inRect(mx, my, readyBtn);
+            backHovered = inRect(mx, my, backBtn);
+            if (e.type == SDL_MOUSEBUTTONDOWN) {
+                if (readyHovered) {
+                    graphics.play(clickSound);
+                    state = CHOOSE_STAGE;
+                } else if (backHovered) {
+                    graphics.play(clickSound);
+                    state = CHOOSE_CHARACTER;
+                }
+            }
+        } else if (state == CHOOSE_STAGE) {
             for (auto& btn : stageButtons) {
                 btn.isHovered = inRect(mx, my, btn.rect);
             }
@@ -130,12 +223,11 @@ private:
                     state = PREVIEW_STAGE;
                 } else if (SDL_PointInRect(&mousePoint, &stageButtons[2].rect)) {
                     graphics.play(clickSound);
-                    return RETURN_TO_MENU;
+                    fadeOut(graphics);
+                    state = CHOOSE_CHARACTER;
                 }
             }
-        }
-
-        if (state == PREVIEW_STAGE) {
+        } else if (state == PREVIEW_STAGE) {
             readyHovered = inRect(mx, my, readyBtn);
             backHovered = inRect(mx, my, backBtn);
             if (e.type == SDL_MOUSEBUTTONDOWN) {
@@ -149,7 +241,14 @@ private:
                 }
             }
         } else if (state == IN_BATTLE) {
-            player.handleEvent(e);
+            player->handleEvent(e);
+        } else if (state == VICTORY || state == GAME_OVER) {
+            if (e.type == SDL_KEYDOWN || e.type == SDL_MOUSEBUTTONDOWN) {
+                if (SDL_GetTicks() - resultDisplayTime >= 2000) {
+                    fadeOut(graphics);
+                    return RETURN_TO_MENU;
+                }
+            }
         }
         return state;
     }
@@ -160,16 +259,105 @@ private:
         SDL_Rect overlay = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
         SDL_RenderFillRect(graphics.renderer, &overlay);
 
-        // Chỉ hiển thị các nút stage trong trạng thái CHOOSE_STAGE và PREVIEW_STAGE
-        if (state == CHOOSE_STAGE || state == PREVIEW_STAGE) {
+        if (state == CHOOSE_CHARACTER || state == PREVIEW_CHARACTER) {
+            renderCharacterButtons(graphics);
+        }
+        if (state == PREVIEW_CHARACTER) {
+            renderCharacterPreview(graphics);
+        } else if (state == CHOOSE_STAGE || state == PREVIEW_STAGE) {
             renderStageButtons(graphics);
         }
-
         if (state == PREVIEW_STAGE) {
             renderStagePreview(graphics);
         } else if (state == IN_BATTLE) {
-            updateBattle();
+            updateBattle(graphics);
             renderBattle(graphics);
+        } else if (state == VICTORY) {
+            renderResult(graphics, "Victory!");
+        } else if (state == GAME_OVER) {
+            renderResult(graphics, "Game Over!");
+        }
+    }
+
+    void renderCharacterButtons(Graphics& graphics) {
+        for (const auto& btn : characterButtons) {
+            SDL_Color boxColor = btn.isHovered ? hoverBoxColor : normalBoxColor;
+            SDL_Color textColor = btn.isHovered ? hoverTextColor : normalTextColor;
+
+            SDL_SetRenderDrawBlendMode(graphics.renderer, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawColor(graphics.renderer, boxColor.r, boxColor.g, boxColor.b, boxColor.a);
+            SDL_RenderFillRect(graphics.renderer, &btn.rect);
+
+            SDL_Texture* textTex = graphics.renderText(btn.label.c_str(), buttonFont, textColor);
+            if (textTex) {
+                int tw, th;
+                SDL_QueryTexture(textTex, NULL, NULL, &tw, &th);
+                graphics.renderTexture(textTex, btn.rect.x + (btn.rect.w - tw) / 2, btn.rect.y + (btn.rect.h - th) / 2);
+                SDL_DestroyTexture(textTex);
+            }
+        }
+    }
+
+    void renderCharacterPreview(Graphics& graphics) {
+        const CharacterPreview& preview = characterPreviews[selectedCharacter];
+
+        SDL_Rect previewBox = {800, 100, 400, 500};
+        SDL_SetRenderDrawColor(graphics.renderer, 50, 50, 50, 220);
+        SDL_RenderFillRect(graphics.renderer, &previewBox);
+
+        SDL_Texture* characterNameTex = graphics.renderText(preview.characterName.c_str(), titleFont, normalTextColor);
+        if (characterNameTex) {
+            int tw, th;
+            SDL_QueryTexture(characterNameTex, NULL, NULL, &tw, &th);
+            graphics.renderTexture(characterNameTex, previewBox.x + (previewBox.w - tw) / 2, previewBox.y + 20);
+            SDL_DestroyTexture(characterNameTex);
+        }
+
+        SDL_Texture* characterImg = graphics.loadTexture(preview.characterImagePath.c_str());
+        if (characterImg) {
+            int charW, charH;
+            SDL_QueryTexture(characterImg, NULL, NULL, &charW, &charH);
+            float scale = 0.6f;
+            int scaledW = static_cast<int>(charW * scale);
+            int scaledH = static_cast<int>(charH * scale);
+            SDL_Rect charDst = {previewBox.x + (previewBox.w - scaledW) / 2, previewBox.y + 100, scaledW, scaledH};
+            SDL_RenderCopy(graphics.renderer, characterImg, NULL, &charDst);
+            SDL_DestroyTexture(characterImg);
+        }
+
+        std::vector<std::string> lines = wrapText(preview.description, font, previewBox.w - 40);
+        int lineHeight = 30;
+        int startY = previewBox.y + 350;
+        for (size_t i = 0; i < lines.size(); ++i) {
+            SDL_Texture* descTex = graphics.renderText(lines[i].c_str(), font, normalTextColor);
+            if (descTex) {
+                int tw, th;
+                SDL_QueryTexture(descTex, NULL, NULL, &tw, &th);
+                graphics.renderTexture(descTex, previewBox.x + (previewBox.w - tw) / 2, startY + i * lineHeight);
+                SDL_DestroyTexture(descTex);
+            }
+        }
+
+        SDL_Color readyColor = readyHovered ? hoverTextColor : normalTextColor;
+        SDL_SetRenderDrawColor(graphics.renderer, normalBoxColor.r, normalBoxColor.g, normalBoxColor.b, normalBoxColor.a);
+        SDL_RenderFillRect(graphics.renderer, &readyBtn);
+        SDL_Texture* readyTex = graphics.renderText("READY", font, readyColor);
+        if (readyTex) {
+            int tw, th;
+            SDL_QueryTexture(readyTex, NULL, NULL, &tw, &th);
+            graphics.renderTexture(readyTex, readyBtn.x + (readyBtn.w - tw) / 2, readyBtn.y + (readyBtn.h - th) / 2);
+            SDL_DestroyTexture(readyTex);
+        }
+
+        SDL_Color backColor = backHovered ? hoverTextColor : normalTextColor;
+        SDL_SetRenderDrawColor(graphics.renderer, normalBoxColor.r, normalBoxColor.g, normalBoxColor.b, normalBoxColor.a);
+        SDL_RenderFillRect(graphics.renderer, &backBtn);
+        SDL_Texture* backTex = graphics.renderText("BACK", font, backColor);
+        if (backTex) {
+            int tw, th;
+            SDL_QueryTexture(backTex, NULL, NULL, &tw, &th);
+            graphics.renderTexture(backTex, backBtn.x + (backBtn.w - tw) / 2, backBtn.y + (backBtn.h - th) / 2);
+            SDL_DestroyTexture(backTex);
         }
     }
 
@@ -192,7 +380,6 @@ private:
         }
     }
 
-    // Hàm hỗ trợ để chia văn bản thành nhiều dòng
     std::vector<std::string> wrapText(const std::string& text, TTF_Font* font, int maxWidth) {
         std::vector<std::string> lines;
         std::stringstream ss(text);
@@ -227,12 +414,10 @@ private:
     void renderStagePreview(Graphics& graphics) {
         const StagePreview& preview = stagePreviews[selectedStage];
 
-        // Vẽ khung preview
         SDL_Rect previewBox = {800, 100, 400, 500};
         SDL_SetRenderDrawColor(graphics.renderer, 50, 50, 50, 220);
         SDL_RenderFillRect(graphics.renderer, &previewBox);
 
-        // Vẽ tên boss
         SDL_Texture* bossNameTex = graphics.renderText(preview.bossName.c_str(), titleFont, normalTextColor);
         if (bossNameTex) {
             int tw, th;
@@ -241,7 +426,6 @@ private:
             SDL_DestroyTexture(bossNameTex);
         }
 
-        // Vẽ hình ảnh boss
         SDL_Texture* bossImg = graphics.loadTexture(preview.bossImagePath.c_str());
         if (bossImg) {
             int bossW, bossH;
@@ -254,7 +438,6 @@ private:
             SDL_DestroyTexture(bossImg);
         }
 
-        // Vẽ mô tả (chia thành nhiều dòng nếu cần)
         std::vector<std::string> lines = wrapText(preview.description, font, previewBox.w - 40);
         int lineHeight = 30;
         int startY = previewBox.y + 350;
@@ -292,19 +475,110 @@ private:
     }
 
     void enterBattle(Graphics& graphics) {
-        graphics.play(battleMusic);
-        player.init(graphics);
+        // Dừng nhạc menu nếu đang phát
+        if (Mix_PlayingMusic()) {
+            Mix_HaltMusic();
+        }
+
+        // Phát nhạc chiến đấu
+        if (battleMusic) {
+            graphics.play(battleMusic);
+        }
+
+        // Cập nhật background dựa trên stage
+        if (selectedStage >= 0 && selectedStage < static_cast<int>(stageBackgrounds.size())) {
+            currentBackground = stageBackgrounds[selectedStage];
+        }
+
+        // Khởi tạo nhân vật và boss
+        if (selectedCharacter == 0) {
+            player = new Warrior();
+        } else {
+            player = new Warrior(); // Chưa có Mage
+        }
+        player->init(graphics);
         boss.init(graphics, 1000, 500, selectedStage);
+        bossProjectiles.clear();
     }
 
-    void updateBattle() {
-        player.update();
+    void updateBattle(Graphics& graphics) {
+        player->update();
         boss.update();
+        boss.attack(bossProjectiles);
+
+        // Cập nhật đạn của Boss
+        for (auto it = bossProjectiles.begin(); it != bossProjectiles.end();) {
+            it->x -= 5; // Đạn di chuyển sang trái
+            if (it->x < 0) {
+                it = bossProjectiles.erase(it);
+            } else {
+                // Kiểm tra va chạm với Player
+                SDL_Rect playerRect = {static_cast<int>(player->getX()), static_cast<int>(player->getY()), 96, 84};
+                if (SDL_HasIntersection(&(*it), &playerRect)) {
+                    player->takeDamage(boss.getAttackDamage());
+                    it = bossProjectiles.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
+
+        // Kiểm tra va chạm cận chiến của Warrior với Boss
+        if (player->getState() == PlayerState::ATTACK1 || player->getState() == PlayerState::ATTACK2 || player->getState() == PlayerState::ATTACK3) {
+            float distance = std::abs(player->getX() - boss.getX());
+            if (distance < 100) { // Khoảng cách tấn công cận chiến
+                boss.takeDamage(player->getAttackDamage());
+            }
+        }
+
+        // Kiểm tra điều kiện thắng/thua
+        if (boss.getHP() <= 0 && boss.getState() == BossState::DEATH) {
+            state = VICTORY;
+            resultDisplayTime = SDL_GetTicks();
+        } else if (player->getHP() <= 0 && player->getState() == PlayerState::DEATH) {
+            state = GAME_OVER;
+            resultDisplayTime = SDL_GetTicks();
+        }
     }
 
     void renderBattle(Graphics& graphics) {
-        player.render(graphics);
+        player->render(graphics);
         boss.render(graphics);
+
+        // Vẽ đạn của Boss
+        for (const auto& projectile : bossProjectiles) {
+            boss.renderProjectile(graphics, projectile);
+        }
+
+        // Vẽ thanh máu
+        renderHealthBars(graphics);
+    }
+
+    void renderHealthBars(Graphics& graphics) {
+        // Thanh máu của Player
+        SDL_Rect playerHealthBar = {20, 20, player->getHP() * 2, 20};
+        SDL_SetRenderDrawColor(graphics.renderer, 0, 255, 0, 255); // Màu xanh lá
+        SDL_RenderFillRect(graphics.renderer, &playerHealthBar);
+
+        // Thanh máu của Boss
+        SDL_Rect bossHealthBar = {SCREEN_WIDTH - 220, 20, boss.getHP(), 20};
+        SDL_SetRenderDrawColor(graphics.renderer, 255, 0, 0, 255); // Màu đỏ
+        SDL_RenderFillRect(graphics.renderer, &bossHealthBar);
+    }
+
+    void renderResult(Graphics& graphics, const std::string& message) {
+        SDL_SetRenderDrawBlendMode(graphics.renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(graphics.renderer, 0, 0, 0, 200);
+        SDL_Rect overlay = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+        SDL_RenderFillRect(graphics.renderer, &overlay);
+
+        SDL_Texture* resultTex = graphics.renderText(message.c_str(), titleFont, normalTextColor);
+        if (resultTex) {
+            int tw, th;
+            SDL_QueryTexture(resultTex, NULL, NULL, &tw, &th);
+            graphics.renderTexture(resultTex, (SCREEN_WIDTH - tw) / 2, (SCREEN_HEIGHT - th) / 2);
+            SDL_DestroyTexture(resultTex);
+        }
     }
 
     bool inRect(int x, int y, SDL_Rect rect) {
@@ -313,6 +587,10 @@ private:
 
 public:
     void quit() {
+        if (player) {
+            delete player;
+            player = nullptr;
+        }
         if (font) {
             TTF_CloseFont(font);
             font = nullptr;
@@ -321,9 +599,24 @@ public:
             TTF_CloseFont(titleFont);
             titleFont = nullptr;
         }
-        if (battleBackground) {
-            SDL_DestroyTexture(battleBackground);
-            battleBackground = nullptr;
+        if (buttonFont) {
+            TTF_CloseFont(buttonFont);
+            buttonFont = nullptr;
+        }
+        if (currentBackground) {
+            SDL_DestroyTexture(currentBackground);
+            currentBackground = nullptr;
+        }
+        for (auto& bg : stageBackgrounds) {
+            if (bg) {
+                SDL_DestroyTexture(bg);
+                bg = nullptr;
+            }
+        }
+        stageBackgrounds.clear();
+        if (menuMusic) {
+            Mix_FreeMusic(menuMusic);
+            menuMusic = nullptr;
         }
         if (battleMusic) {
             Mix_FreeMusic(battleMusic);
