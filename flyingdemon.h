@@ -12,7 +12,7 @@ private:
     int attackDamage = 12;
 
 public:
-    void init(Graphics& graphics, float startX, float startY, int stage) override {
+    void init(Graphics& graphics, float startX, float startY, int stage, float warriorX) override {
         x = startX;
         y = startY;
         hp = 90;
@@ -77,6 +77,9 @@ public:
         }
     }
 
+    void update(float warriorX) override {
+    }
+
     void attack(std::vector<SDL_Rect>& projectiles) override {
         if (state == BossState::DEATH) return;
 
@@ -88,6 +91,9 @@ public:
             projectiles.push_back(projectile);
             lastAttackTime = currentTime;
         }
+    }
+
+    void attack(std::vector<SDL_Rect>& projectiles, float warriorX) override {
     }
 
     void render(Graphics& graphics) override {

@@ -133,6 +133,9 @@ private:
     SDL_Rect btnBack;
     bool backPauseHovered = false;
 
+    bool playerInitialized = false;
+
+
 public:
     void init(Graphics& graphics) {
         font = graphics.loadFont("assets/font/Coiny-Regular.ttf", 24);
@@ -349,10 +352,20 @@ private:
                     graphics.play(clickSound);
                     selectedCharacter = 0;
                     state = PREVIEW_CHARACTER;
+                    if (!playerInitialized) { // Chỉ khởi tạo player một lần
+                        player = new Warrior();
+                        player->init(graphics);
+                        playerInitialized = true;
+                    }
                 } else if (SDL_PointInRect(&mousePoint, &characterButtons[1].rect)) {
                     graphics.play(clickSound);
                     selectedCharacter = 1;
                     state = PREVIEW_CHARACTER;
+                    if (!playerInitialized) { // Chỉ khởi tạo player một lần
+                        player = new Warrior(); // Hiện tại chỉ có Warrior, sau này có thể thêm Mage
+                        player->init(graphics);
+                        playerInitialized = true;
+                    }
                 } else if (SDL_PointInRect(&mousePoint, &characterButtons[2].rect)) {
                     graphics.play(clickSound);
                     fadeOut(graphics);
@@ -849,21 +862,27 @@ private:
         if (Mix_PlayingMusic()) {
             Mix_HaltMusic();
         }
-
         if (battleMusic) {
             graphics.play(battleMusic);
         }
-
         if (selectedStage >= 0 && selectedStage < static_cast<int>(stageBackgrounds.size())) {
             currentBackground = stageBackgrounds[selectedStage];
         }
 
         if (selectedCharacter == 0) {
-            player = new Warrior();
+            Warrior* warrior = dynamic_cast<Warrior*>(player);
+            if (warrior) {
+                warrior->setHP(warrior->getHP()); // Giữ nguyên HP đã nâng cấp
+                warrior->setAttackDamage(warrior->getAttackDamage()); // Giữ nguyên ATK đã nâng cấp
+                warrior->setState(PlayerState::IDLE); // Reset trạng thái
+                warrior->setY(550.0f); // Đặt lại vị trí mặt đất
+                warrior->getJumpVelocity() = -15.0f; // Reset nhảy
+                warrior->getIsJumping() = false;
+            }
         } else {
             player = new Warrior();
         }
-        player->init(graphics);
+
 
         if (boss) {
             delete boss;
@@ -871,17 +890,26 @@ private:
         }
         if (selectedStage == 0) {
             boss = new FlyingDemon();
+            boss->init(graphics, 1000, 550, selectedStage, player->getX());
         } else {
             boss = new DemonSlime();
+            boss->init(graphics, 1000, 550, selectedStage, player->getX());
         }
-        boss->init(graphics, 1000, 550, selectedStage);
         bossProjectiles.clear();
+        bossDefeated = false;
+        chest.isOpened = false;
     }
 
     void updateBattle(Graphics& graphics) {
         player->update();
-        boss->update();
-        boss->attack(bossProjectiles);
+        if (selectedStage == 0) {
+            boss->update();
+            boss->attack(bossProjectiles);
+        } else if (selectedStage == 1) {
+            boss->update(player->getX());
+            boss->attack(bossProjectiles, player->getX());
+            std::cout << "stage 2\n";
+        }
 
         Warrior* warrior = dynamic_cast<Warrior*>(player);
         if (warrior) {
@@ -922,10 +950,16 @@ private:
             if (distance < 115) {
                 static Uint32 lastBossAttackTime = 0;
                 Uint32 currentTime = SDL_GetTicks();
-                if (boss->getCurrentFrame() >= 9 &&
-                    currentTime - lastBossAttackTime >= 2000) {
-                    player->takeDamage(boss->getAttackDamage());
-                    lastBossAttackTime = currentTime;
+                DemonSlime* demonSlime = dynamic_cast<DemonSlime*>(boss);
+                if (demonSlime && boss->getCurrentFrame() >= 10 && currentTime - lastBossAttackTime >= 2000) {
+                    bool facingLeft = demonSlime->getFacingLeft();
+                    float warriorX = player->getX();
+                    float demonX = boss->getX();
+                    // Chém sang trái khi Warrior ở bên trái, chém sang phải khi ở bên phải
+                    if ((facingLeft && warriorX < demonX) || (!facingLeft && warriorX > demonX)) {
+                        player->takeDamage(boss->getAttackDamage());
+                        lastBossAttackTime = currentTime;
+                    }
                 }
             }
         }

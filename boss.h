@@ -18,17 +18,12 @@ protected:
     int hp = 200;
     float x = 1000;
     float y = 500;
-    bool facingLeft = true;
+    bool facingLeft = false;
     BossState state = BossState::IDLE;
     std::map<BossState, Sprite> sprites;
 
 public:
-    virtual void init(Graphics& graphics, float startX, float startY, int stage) {
-        // Phương thức ảo để các lớp con triển khai
-        x = startX;
-        y = startY;
-        hp = 200;
-    }
+    virtual void init(Graphics& graphics, float startX, float startY, int stage, float warriorX) = 0;
 
     virtual void update() {
         // Phương thức ảo để cập nhật trạng thái và vị trí
@@ -36,9 +31,13 @@ public:
         sprites[state].tickTimed(now);
     }
 
+    virtual void update(float warriorX) = 0;
+
     virtual void attack(std::vector<SDL_Rect>& projectiles) {
         // Phương thức ảo để xử lý tấn công
     }
+
+    virtual void attack(std::vector<SDL_Rect>& projectiles, float warriorX) = 0;
 
     virtual void render(Graphics& graphics) {
         graphics.renderSprite(static_cast<int>(x), static_cast<int>(y), sprites[state], facingLeft, 1.5f);
