@@ -74,6 +74,8 @@ private:
     Mix_Music* battleMusic = nullptr;
     Mix_Chunk* clickSound = nullptr;
     Mix_Chunk* errorClick = nullptr;
+    Mix_Chunk* diedMusic = nullptr;
+    Mix_Chunk* victorySound = nullptr;
 
     std::vector<CharacterButton> characterButtons;
     std::vector<CharacterPreview> characterPreviews;
@@ -119,6 +121,17 @@ private:
     // Timer cho bossDefeated
     Uint32 bossDefeatedTime = 0;
 
+    Uint32 playerDeathTime = 0;
+    bool playerDead = false;
+
+    SDL_Rect btnRetry;
+    SDL_Rect btnReturnToMenuGameOver; // Đặt tên khác để tránh trùng với btnReturnToMenu trong menu pause
+    bool retryHovered = false;
+    bool returnToMenuGameOverHovered = false;
+
+    SDL_Rect btnBack;
+    bool backPauseHovered = false;
+
 public:
     void init(Graphics& graphics) {
         font = graphics.loadFont("assets/font/Coiny-Regular.ttf", 24);
@@ -143,14 +156,25 @@ public:
         std::ifstream configFile("config.txt");
         if (configFile.is_open()) {
             std::string line;
-            std::getline(configFile, line);
+            if (std::getline(configFile, line)) {
+                try {
+                    volume = std::stoi(line); // Đọc volume từ dòng đầu tiên
+                    Mix_VolumeMusic(volume * 128 / 100); // Áp dụng âm lượng
+                } catch (...) {
+                    volume = 50; // Giá trị mặc định nếu không đọc được
+                    Mix_VolumeMusic(volume * 128 / 100);
+                }
+            }
             if (std::getline(configFile, line)) {
                 playerName = line;
             }
             configFile.close();
         } else {
             playerName = "Player";
+            volume = 50; // Giá trị mặc định nếu không có file
+            Mix_VolumeMusic(volume * 128 / 100);
         }
+        updateSliderKnob(); // Cập nhật vị trí thanh trượt dựa trên volume
 
         currentBackground = graphics.loadTexture("assets/imgs/bg.png");
         stageBackgrounds.push_back(graphics.loadTexture("assets/imgs/stage1.png"));
@@ -160,6 +184,8 @@ public:
         battleMusic = graphics.loadMusic("assets/music/battle_music.mp3");
         clickSound = graphics.loadSound("assets/sounds/click.wav");
         errorClick = graphics.loadSound("assets/sounds/error.mp3");
+        diedMusic = graphics.loadSound("assets/sounds/you_died.mp3");
+        victorySound = graphics.loadSound("assets/sounds/victory.wav");
 
         characterButtons.push_back({"Warrior", {100, 250, 200, 80}});
         characterButtons.push_back({"Mage", {100, 350, 200, 80}});
@@ -191,11 +217,15 @@ public:
         }
 
         coins = loadCoins();
-
-        btnReturnToMenu = {SCREEN_WIDTH / 2 - 100, 400, 200, 60};
         sliderBar = {SCREEN_WIDTH / 2 - 150, 250, 300, 10};
         volume = Mix_VolumeMusic(-1) * 100 / 128;
         updateSliderKnob();
+
+        btnRetry = {SCREEN_WIDTH / 2 - 200, 400, 160, 60};
+        btnReturnToMenuGameOver = {SCREEN_WIDTH / 2 + 40, 400, 200, 60};
+
+        btnBack = {SCREEN_WIDTH / 2 - 80, 320, 160, 60}; // Dịch nút Back lên trên
+        btnReturnToMenu = {SCREEN_WIDTH / 2 - 80, 440, 200, 60}; // Dịch nút Return
     }
 
     void updateSliderKnob() {
@@ -374,6 +404,18 @@ private:
                 } else if (backHovered) {
                     graphics.play(clickSound);
                     state = CHOOSE_STAGE;
+                    if (currentBackground) {
+                        SDL_DestroyTexture(currentBackground);
+                        currentBackground = nullptr;
+                    }
+                    currentBackground = graphics.loadTexture("assets/imgs/bg.png");
+                    // Dừng battleMusic và phát menuMusic
+                    if (Mix_PlayingMusic()) {
+                        Mix_HaltMusic();
+                    }
+                    if (menuMusic) {
+                        graphics.play(menuMusic);
+                    }
                 } else if (buyHPHovered && coins >= 10) {
                     coins -= 10;
                     Warrior* warrior = dynamic_cast<Warrior*>(player);
@@ -403,9 +445,15 @@ private:
             }
         } else if (state == PAUSED) {
             returnToMenuHovered = inRect(mx, my, btnReturnToMenu);
-
+            backPauseHovered = inRect(mx, my, btnBack);
             if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) {
                 state = IN_BATTLE;
+                std::ofstream out("config.txt");
+                if (out) {
+                    out << volume << "\n";
+                    out << playerName << "\n";
+                    out.close();
+                }
             } else if (e.type == SDL_MOUSEBUTTONDOWN) {
                 if (inRect(mx, my, sliderKnob) || inRect(mx, my, sliderBar)) {
                     draggingSlider = true;
@@ -413,6 +461,16 @@ private:
                     graphics.play(clickSound);
                     fadeOut(graphics);
                     return RETURN_TO_MENU;
+                } else if (backPauseHovered) {
+                    graphics.play(clickSound);
+                    state = IN_BATTLE;
+                    // Lưu âm lượng khi nhấn nút Back
+                    std::ofstream out("config.txt");
+                    if (out) {
+                        out << volume << "\n";
+                        out << playerName << "\n";
+                        out.close();
+                    }
                 }
             } else if (e.type == SDL_MOUSEBUTTONUP) {
                 draggingSlider = false;
@@ -423,11 +481,39 @@ private:
                 Mix_VolumeMusic(volume * 128 / 100);
                 updateSliderKnob();
             }
-        } else if (state == VICTORY || state == GAME_OVER) {
+        } else if (state == VICTORY) {
             if (e.type == SDL_KEYDOWN || e.type == SDL_MOUSEBUTTONDOWN) {
                 if (SDL_GetTicks() - resultDisplayTime >= 2000) {
                     fadeOut(graphics);
                     state = PREVIEW_STAGE;
+                    if (currentBackground) {
+                        SDL_DestroyTexture(currentBackground);
+                        currentBackground = nullptr;
+                    }
+                    currentBackground = graphics.loadTexture("assets/imgs/bg.png");
+                    // Dừng battleMusic và phát menuMusic
+                    if (Mix_PlayingMusic()) {
+                        Mix_HaltMusic();
+                    }
+                    if (menuMusic) {
+                        graphics.play(menuMusic);
+                    }
+                }
+            }
+        } else if (state == GAME_OVER) {
+            retryHovered = inRect(mx, my, btnRetry);
+            returnToMenuGameOverHovered = inRect(mx, my, btnReturnToMenuGameOver);
+
+            if (e.type == SDL_MOUSEBUTTONDOWN) {
+                if (retryHovered) {
+                    graphics.play(clickSound);
+                    enterBattle(graphics); // Khởi tạo lại stage hiện tại
+                    state = IN_BATTLE;
+                    playerDead = false; // Reset trạng thái
+                } else if (returnToMenuGameOverHovered) {
+                    graphics.play(clickSound);
+                    fadeOut(graphics);
+                    return RETURN_TO_MENU;
                 }
             }
         }
@@ -494,6 +580,21 @@ private:
                 SDL_DestroyTexture(valTex);
 
                 SDL_SetRenderDrawBlendMode(graphics.renderer, SDL_BLENDMODE_BLEND);
+                SDL_Color boxColorBack = backHovered ? SDL_Color{50, 50, 50, 220} : SDL_Color{0, 0, 0, 180};
+                SDL_Color textColBack = backHovered ? highlightColor : textColor;
+                SDL_SetRenderDrawColor(graphics.renderer, boxColorBack.r, boxColorBack.g, boxColorBack.b, boxColorBack.a);
+                SDL_RenderFillRect(graphics.renderer, &btnBack);
+                SDL_Texture* backText = graphics.renderText("Back", font, textColBack);
+                if (backText) {
+                    int tw, th;
+                    SDL_QueryTexture(backText, NULL, NULL, &tw, &th);
+                    int tx = btnBack.x + (btnBack.w - tw) / 2;
+                    int ty = btnBack.y + (btnBack.h - th) / 2;
+                    graphics.renderTexture(backText, tx, ty);
+                    SDL_DestroyTexture(backText);
+                }
+
+                SDL_SetRenderDrawBlendMode(graphics.renderer, SDL_BLENDMODE_BLEND);
                 SDL_Color boxColor = returnToMenuHovered ? SDL_Color{50, 50, 50, 220} : SDL_Color{0, 0, 0, 180};
                 SDL_Color textCol = returnToMenuHovered ? highlightColor : textColor;
                 SDL_SetRenderDrawColor(graphics.renderer, boxColor.r, boxColor.g, boxColor.b, boxColor.a);
@@ -512,6 +613,38 @@ private:
             renderResult(graphics, "Victory!");
         } else if (state == GAME_OVER) {
             renderResult(graphics, "Game Over!");
+
+            // Vẽ nút RETRY
+            SDL_SetRenderDrawBlendMode(graphics.renderer, SDL_BLENDMODE_BLEND);
+            SDL_Color boxColorRetry = retryHovered ? SDL_Color{50, 50, 50, 220} : SDL_Color{0, 0, 0, 180};
+            SDL_Color textColRetry = retryHovered ? hoverTextColor : normalTextColor;
+            SDL_SetRenderDrawColor(graphics.renderer, boxColorRetry.r, boxColorRetry.g, boxColorRetry.b, boxColorRetry.a);
+            SDL_RenderFillRect(graphics.renderer, &btnRetry);
+            SDL_Texture* retryText = graphics.renderText("Retry", font, textColRetry);
+            if (retryText) {
+                int tw, th;
+                SDL_QueryTexture(retryText, NULL, NULL, &tw, &th);
+                int tx = btnRetry.x + (btnRetry.w - tw) / 2;
+                int ty = btnRetry.y + (btnRetry.h - th) / 2;
+                graphics.renderTexture(retryText, tx, ty);
+                SDL_DestroyTexture(retryText);
+            }
+
+            // Vẽ nút RETURN TO MENU
+            SDL_SetRenderDrawBlendMode(graphics.renderer, SDL_BLENDMODE_BLEND);
+            SDL_Color boxColorReturn = returnToMenuGameOverHovered ? SDL_Color{50, 50, 50, 220} : SDL_Color{0, 0, 0, 180};
+            SDL_Color textColReturn = returnToMenuGameOverHovered ? hoverTextColor : normalTextColor;
+            SDL_SetRenderDrawColor(graphics.renderer, boxColorReturn.r, boxColorReturn.g, boxColorReturn.b, boxColorReturn.a);
+            SDL_RenderFillRect(graphics.renderer, &btnReturnToMenuGameOver);
+            SDL_Texture* returnText = graphics.renderText("Return to Menu", font, textColReturn);
+            if (returnText) {
+                int tw, th;
+                SDL_QueryTexture(returnText, NULL, NULL, &tw, &th);
+                int tx = btnReturnToMenuGameOver.x + (btnReturnToMenuGameOver.w - tw) / 2;
+                int ty = btnReturnToMenuGameOver.y + (btnReturnToMenuGameOver.h - th) / 2;
+                graphics.renderTexture(returnText, tx, ty);
+                SDL_DestroyTexture(returnText);
+            }
         }
     }
 
@@ -800,18 +933,29 @@ private:
 
         if (bossDefeated && !chest.isOpened) {
             Uint32 currentTime = SDL_GetTicks();
+            graphics.play(victorySound);
             if (currentTime - bossDefeatedTime >= 5000) {
                 chest.isOpened = true;
                 chest.sprite.currentFrame = 2;
-                addCoins(5);
+                addCoins(10);
                 state = VICTORY;
                 resultDisplayTime = SDL_GetTicks();
             }
         }
 
-        if (player->getHP() <= 0 && player->getState() == PlayerState::DEATH) {
-            state = GAME_OVER;
-            resultDisplayTime = SDL_GetTicks();
+        if (player->getHP() <= 0 && player->getState() == PlayerState::DEATH && !playerDead) {
+            playerDead = true;
+            playerDeathTime = SDL_GetTicks();
+            graphics.play(diedMusic);
+        }
+
+        if (playerDead) {
+            Uint32 currentTime = SDL_GetTicks();
+            if (currentTime - playerDeathTime >= 5000) { // 5000ms = 5 giây
+                state = GAME_OVER;
+                resultDisplayTime = SDL_GetTicks();
+                playerDead = false;
+            }
         }
     }
 
@@ -830,12 +974,26 @@ private:
             Uint32 elapsed = SDL_GetTicks() - bossDefeatedTimeLocal;
             int remainingSeconds = 5 - (elapsed / 1000);
             if (remainingSeconds >= 0) {
-                std::string timerText = "Chest opens in: " + std::to_string(remainingSeconds) + "s";
+                std::string timerText = "Game end in: " + std::to_string(remainingSeconds) + "s";
                 SDL_Texture* timerTex = graphics.renderText(timerText.c_str(), font, normalTextColor);
                 if (timerTex) {
                     int tw, th;
                     SDL_QueryTexture(timerTex, NULL, NULL, &tw, &th);
                     graphics.renderTexture(timerTex, chest.rect.x + (chest.rect.w - tw) / 2, chest.rect.y - th - 10);
+                    SDL_DestroyTexture(timerTex);
+                }
+            }
+        }
+        if (playerDead) {
+            Uint32 elapsed = SDL_GetTicks() - playerDeathTime;
+            int remainingSeconds = 5 - (elapsed / 1000);
+            if (remainingSeconds >= 0) {
+                std::string timerText = "Game Over in: " + std::to_string(remainingSeconds) + "s";
+                SDL_Texture* timerTex = graphics.renderText(timerText.c_str(), font, normalTextColor);
+                if (timerTex) {
+                    int tw, th;
+                    SDL_QueryTexture(timerTex, NULL, NULL, &tw, &th);
+                    graphics.renderTexture(timerTex, SCREEN_WIDTH / 2 - tw / 2, SCREEN_HEIGHT / 2 - th - 10);
                     SDL_DestroyTexture(timerTex);
                 }
             }
@@ -999,6 +1157,14 @@ public:
         if (clickSound) {
             Mix_FreeChunk(clickSound);
             clickSound = nullptr;
+        }
+        if (victorySound) {
+            Mix_FreeChunk(victorySound);
+            victorySound = nullptr;
+        }
+        if (diedMusic) {
+            Mix_FreeChunk(victorySound);
+            diedMusic = nullptr;
         }
         for (auto& platform : platforms) {
             if (platform.texture) {
