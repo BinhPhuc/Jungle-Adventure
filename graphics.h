@@ -34,6 +34,19 @@ struct Sprite {
         }
     }
 
+    void initGrid(SDL_Texture* _texture, int frameWidth, int frameHeight, int frameCount, int row, int startX = 0, int startY = 0) {
+        texture = _texture;
+        clips.clear();
+        for (int i = 0; i < frameCount; i++) {
+            // Tính toán vị trí x của frame trong hàng
+            int x = startX + i * frameWidth;
+            // Tính toán vị trí y dựa trên hàng (row) được chọn
+            int y = startY + row * frameHeight;
+            SDL_Rect clip = { x, y, frameWidth, frameHeight };
+            clips.push_back(clip);
+        }
+    }
+
     void tick() {
         currentFrame = (currentFrame + 1) % clips.size();
     }

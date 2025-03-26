@@ -5,7 +5,7 @@
 	<SDL_image.h>
 	"graphics.h"
 
-1742885466 f:\game\game\graphics.h
+1742991170 f:\game\game\graphics.h
 	<SDL.h>
 	<SDL_image.h>
 	<SDL_ttf.h>
@@ -46,12 +46,13 @@
 	<fstream>
 	"graphics.h"
 
-1742978786 f:\game\game\game.h
+1742999873 f:\game\game\game.h
 	"graphics.h"
 	"player.h"
 	"warrior.h"
 	"boss.h"
 	"flyingdemon.h"
+	"demonslime.h"
 	<vector>
 	<string>
 	<sstream>
@@ -81,7 +82,7 @@
 	<map>
 	<vector>
 
-1742900965 f:\game\game\boss.h
+1742995433 f:\game\game\boss.h
 	"graphics.h"
 	<vector>
 	<map>
@@ -92,9 +93,12 @@
 	<string>
 	<vector>
 
-1742978877 f:\game\game\warrior.h
+1742978915 f:\game\game\warrior.h
 	"player.h"
 
 1742913340 f:\game\game\flyingdemon.h
+	"boss.h"
+
+1742999879 f:\game\game\demonslime.h
 	"boss.h"
 

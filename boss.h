@@ -63,6 +63,9 @@ public:
     virtual float getY() const { return y; }
     virtual BossState getState() const { return state; }
     virtual int getAttackDamage() const { return 10; }
+    int getCurrentFrame() const {
+        return sprites.at(state).currentFrame; // Trả về frame hiện tại của trạng thái hiện tại
+    }
 };
 
 #endif

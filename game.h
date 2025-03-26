@@ -6,6 +6,7 @@
 #include "warrior.h"
 #include "boss.h"
 #include "flyingdemon.h"
+#include "demonslime.h"
 #include <vector>
 #include <string>
 #include <sstream>
@@ -200,7 +201,7 @@ public:
 
         stagePreviews.push_back({"Flying Demon", "A fierce flying demon lurking in the shadows.",
                                 "assets/sprites/flying_demon/boss_flying_demon.png"});
-        stagePreviews.push_back({"Mystery Creature", "A mysterious creature with unknown powers.", "assets/sprites/boss/boss2.png"});
+        stagePreviews.push_back({"Demon Slime", "A fiery demon slime wielding a deadly sword.", "assets/sprites/demon_slime/demon_slime.png"});
 
         int btnWidth = 150;
         int btnHeight = 50;
@@ -871,7 +872,7 @@ private:
         if (selectedStage == 0) {
             boss = new FlyingDemon();
         } else {
-            boss = new FlyingDemon();
+            boss = new DemonSlime();
         }
         boss->init(graphics, 1000, 550, selectedStage);
         bossProjectiles.clear();
@@ -899,17 +900,32 @@ private:
             }
         }
 
-        for (auto it = bossProjectiles.begin(); it != bossProjectiles.end();) {
-            it->x -= 5;
-            if (it->x < 0) {
-                it = bossProjectiles.erase(it);
-            } else {
-                SDL_Rect playerRect = {static_cast<int>(player->getX()), static_cast<int>(player->getY()), 96, 84};
-                if (SDL_HasIntersection(&(*it), &playerRect)) {
-                    player->takeDamage(boss->getAttackDamage());
+        if (selectedStage == 0) {
+            for (auto it = bossProjectiles.begin(); it != bossProjectiles.end();) {
+                it->x -= 5;
+                if (it->x < 0) {
                     it = bossProjectiles.erase(it);
                 } else {
-                    ++it;
+                    SDL_Rect playerRect = {static_cast<int>(player->getX()), static_cast<int>(player->getY()), 96, 84};
+                    if (SDL_HasIntersection(&(*it), &playerRect)) {
+                        player->takeDamage(boss->getAttackDamage());
+                        it = bossProjectiles.erase(it);
+                    } else {
+                        ++it;
+                    }
+                }
+            }
+        }
+
+        if (selectedStage == 1 && boss->getState() == BossState::ATTACK) {
+            float distance = std::abs(player->getX() - boss->getX());
+            if (distance < 115) {
+                static Uint32 lastBossAttackTime = 0;
+                Uint32 currentTime = SDL_GetTicks();
+                if (boss->getCurrentFrame() >= 9 &&
+                    currentTime - lastBossAttackTime >= 2000) {
+                    player->takeDamage(boss->getAttackDamage());
+                    lastBossAttackTime = currentTime;
                 }
             }
         }
@@ -998,8 +1014,10 @@ private:
                 }
             }
         }
-        for (const auto& projectile : bossProjectiles) {
-            boss->renderProjectile(graphics, projectile);
+        if (selectedStage == 0) {
+            for (const auto& projectile : bossProjectiles) {
+                boss->renderProjectile(graphics, projectile);
+            }
         }
         renderHealthBars(graphics);
     }
