@@ -60,6 +60,12 @@ public:
             return;
         }
 
+        if (hp < 125) {
+            speed = 4.5f;
+            attackSpeed = 1.5f; // Tấn công nhanh hơn
+            Uint32 now = SDL_GetTicks();
+        }
+
         // Logic di chuyển đuổi theo Warrior
         float distanceToWarrior = std::abs(warriorX - x);
         if (distanceToWarrior <= chaseRange && state != BossState::ATTACK && state != BossState::HURT) {
@@ -93,16 +99,14 @@ public:
 
         y = groundLevel; // Giữ trên mặt đất
 
-
-
-        // Quay lại trạng thái FLYING sau khi hoàn thành ATTACK hoặc HURT
+        Uint32 now = SDL_GetTicks();
+        sprites[state].tickTimed(now);
         if ((state == BossState::ATTACK && sprites[state].currentFrame == sprites[state].clips.size() - 1) ||
             (state == BossState::HURT && sprites[state].currentFrame == sprites[state].clips.size() - 1)) {
             state = BossState::FLYING;
         }
-        // Cập nhật animation
-        Uint32 now = SDL_GetTicks();
-        sprites[state].tickTimed(now);
+
+
     }
 
     void attack(std::vector<SDL_Rect>& projectiles, float warriorX) override {
@@ -125,7 +129,6 @@ public:
     }
 
     void render(Graphics& graphics) override {
-//        std::cout << "Render: x = " << x << ", facingLeft = " << facingLeft << std::endl;
         graphics.renderSprite(static_cast<int>(x), static_cast<int>(y), sprites[state], !facingLeft, 2.5f);
     }
 

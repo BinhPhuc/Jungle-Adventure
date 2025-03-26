@@ -865,14 +865,26 @@ private:
         if (battleMusic) {
             graphics.play(battleMusic);
         }
-        if (selectedStage >= 0 && selectedStage < static_cast<int>(stageBackgrounds.size())) {
+        if (selectedStage >= 0 && selectedStage < static_cast<int>(stageBackgrounds.size()) && stageBackgrounds[selectedStage]) {
+            if (currentBackground) {
+                SDL_DestroyTexture(currentBackground);
+                currentBackground = nullptr;
+            }
             currentBackground = stageBackgrounds[selectedStage];
+        } else {
+            // Nếu không tải được stage background, dùng background mặc định
+            if (currentBackground) {
+                SDL_DestroyTexture(currentBackground);
+            }
+            currentBackground = graphics.loadTexture("assets/imgs/bg.png");
+            if (!currentBackground) {
+                std::cerr << "Failed to load fallback background: assets/imgs/bg.png" << std::endl;
+            }
         }
-
         if (selectedCharacter == 0) {
             Warrior* warrior = dynamic_cast<Warrior*>(player);
             if (warrior) {
-                warrior->setHP(warrior->getHP()); // Giữ nguyên HP đã nâng cấp
+                warrior->setHP(warrior->getHP() > 0 ? warrior->getHP() : 120); // Giữ nguyên HP đã nâng cấp
                 warrior->setAttackDamage(warrior->getAttackDamage()); // Giữ nguyên ATK đã nâng cấp
                 warrior->setState(PlayerState::IDLE); // Reset trạng thái
                 warrior->setY(550.0f); // Đặt lại vị trí mặt đất
