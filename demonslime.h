@@ -67,17 +67,19 @@ public:
             attackSpeed = 2.0f; // Tấn công nhanh hơn khi HP thấp
         }
 
-        // Logic di chuyển: di chuyển từ x = 1000 đến targetX = 750 và dừng lại
+        // Logic di chuyển: di chuyển từ x = 1000 đến targetX = 550 và dừng lại
         if (x > targetX) {
             x += vx; // Di chuyển sang trái
             facingLeft = true; // Quay mặt sang trái
-            if (state != BossState::ATTACK && state != BossState::HURT) {
+            if (state != BossState::ATTACK) { // Bỏ kiểm tra HURT
                 state = BossState::FLYING;
             }
         } else {
             x = targetX; // Dừng lại ở targetX
             vx = 0; // Dừng di chuyển
-            if (state != BossState::ATTACK && state != BossState::HURT) {
+            // Xoay hướng dựa trên vị trí của Warrior
+            facingLeft = (warriorX < x);
+            if (state != BossState::ATTACK) { // Bỏ kiểm tra HURT
                 state = BossState::IDLE;
             }
         }
@@ -86,8 +88,7 @@ public:
 
         Uint32 now = SDL_GetTicks();
         sprites[state].tickTimed(now);
-        if ((state == BossState::ATTACK && sprites[state].currentFrame == sprites[state].clips.size() - 1) ||
-            (state == BossState::HURT && sprites[state].currentFrame == sprites[state].clips.size() - 1)) {
+        if (state == BossState::ATTACK && sprites[state].currentFrame == sprites[state].clips.size() - 1) {
             state = (x > targetX) ? BossState::FLYING : BossState::IDLE;
         }
     }
@@ -102,6 +103,16 @@ public:
             sprites[state].currentFrame = 0;
             lastAttackTime = currentTime;
         }
+    }
+
+    void takeDamage(int damage) override {
+        if (state == BossState::DEATH) return;
+        hp -= damage;
+        if (hp <= 0) {
+            hp = 0;
+            state = BossState::DEATH;
+        }
+        // Không chuyển sang trạng thái HURT, giữ nguyên trạng thái hiện tại
     }
 
     // Ghi đè hàm renderProjectile (vì Demon Slime không bắn đạn)

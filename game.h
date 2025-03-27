@@ -137,6 +137,12 @@ private:
 
 
 public:
+
+    void initBackgrounds(Graphics& graphics) {
+        stageBackgrounds.clear();
+        stageBackgrounds.push_back(graphics.loadTexture("assets/imgs/stage1.png"));
+        stageBackgrounds.push_back(graphics.loadTexture("assets/imgs/stage2.png"));
+    }
     void init(Graphics& graphics) {
         font = graphics.loadFont("assets/font/Coiny-Regular.ttf", 24);
         buttonFont = graphics.loadFont("assets/font/Coiny-Regular.ttf", 32);
@@ -181,8 +187,7 @@ public:
         updateSliderKnob(); // Cập nhật vị trí thanh trượt dựa trên volume
 
         currentBackground = graphics.loadTexture("assets/imgs/bg.png");
-        stageBackgrounds.push_back(graphics.loadTexture("assets/imgs/stage1.png"));
-        stageBackgrounds.push_back(graphics.loadTexture("assets/imgs/stage2.png"));
+        initBackgrounds(graphics);
 
         menuMusic = graphics.loadMusic("assets/music/menu_music.wav");
         battleMusic = graphics.loadMusic("assets/music/battle_music.mp3");
@@ -269,6 +274,8 @@ public:
     }
 
 private:
+
+
     void addCoins(int amount) {
         int totalCoins = loadCoins() + amount;
         std::ofstream out("coins.txt");
@@ -505,6 +512,7 @@ private:
                         currentBackground = nullptr;
                     }
                     currentBackground = graphics.loadTexture("assets/imgs/bg.png");
+                    initBackgrounds(graphics);
                     // Dừng battleMusic và phát menuMusic
                     if (Mix_PlayingMusic()) {
                         Mix_HaltMusic();
@@ -521,6 +529,7 @@ private:
             if (e.type == SDL_MOUSEBUTTONDOWN) {
                 if (retryHovered) {
                     graphics.play(clickSound);
+                    initBackgrounds(graphics);
                     enterBattle(graphics); // Khởi tạo lại stage hiện tại
                     state = IN_BATTLE;
                     playerDead = false; // Reset trạng thái
@@ -859,11 +868,15 @@ private:
     }
 
     void enterBattle(Graphics& graphics) {
+
         if (Mix_PlayingMusic()) {
             Mix_HaltMusic();
         }
         if (battleMusic) {
             graphics.play(battleMusic);
+        }
+        if (stageBackgrounds.empty()) {
+            initBackgrounds(graphics);
         }
         if (selectedStage >= 0 && selectedStage < static_cast<int>(stageBackgrounds.size()) && stageBackgrounds[selectedStage]) {
             if (currentBackground) {
@@ -872,9 +885,9 @@ private:
             }
             currentBackground = stageBackgrounds[selectedStage];
         } else {
-            // Nếu không tải được stage background, dùng background mặc định
             if (currentBackground) {
                 SDL_DestroyTexture(currentBackground);
+                currentBackground = nullptr;
             }
             currentBackground = graphics.loadTexture("assets/imgs/bg.png");
             if (!currentBackground) {
@@ -973,7 +986,7 @@ private:
                     bool facingLeft = demonSlime->getFacingLeft();
                     float warriorX = player->getX();
                     float demonX = boss->getX();
-                    // Chém sang trái khi Warrior ở bên trái, chém sang phải khi ở bên phải
+                    // Chỉ gây sát thương khi hướng của DemonSlime khớp với vị trí của Warrior
                     if ((facingLeft && warriorX < demonX) || (!facingLeft && warriorX > demonX)) {
                         player->takeDamage(boss->getAttackDamage());
                         lastBossAttackTime = currentTime;
