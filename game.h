@@ -953,7 +953,7 @@ private:
             }
             if (warrior->getShouldDealDamage()) {
                 float distance = std::abs(warrior->getX() - boss->getX());
-                if (distance < 300) {
+                if (distance < 150 && distance >= 50) {
                     boss->takeDamage(warrior->getAttackDamage());
                 }
             }
@@ -978,11 +978,11 @@ private:
 
         if (selectedStage == 1 && boss->getState() == BossState::ATTACK) {
             float distance = std::abs(player->getX() - boss->getX());
-            if (distance < 120) {
+            if (distance >= 50 && distance < 150) {
                 static Uint32 lastBossAttackTime = 0;
                 Uint32 currentTime = SDL_GetTicks();
                 DemonSlime* demonSlime = dynamic_cast<DemonSlime*>(boss);
-                if (demonSlime && boss->getCurrentFrame() >= 9 && currentTime - lastBossAttackTime >= 2000) {
+                if (demonSlime && boss->getCurrentFrame() >= 10 && currentTime - lastBossAttackTime >= 2000) {
                     bool facingLeft = demonSlime->getFacingLeft();
                     float warriorX = player->getX();
                     float demonX = boss->getX();
@@ -1000,7 +1000,7 @@ private:
             player->getState() == PlayerState::ATTACK2 ||
             player->getState() == PlayerState::ATTACK3) {
             float distance = std::abs(player->getX() - boss->getX());
-            if (distance < 115) {
+            if (distance >= 50 && distance < 150) {
                 Uint32 currentTime = SDL_GetTicks();
                 if (currentTime - lastAttackTime >= 1000) {
                     boss->takeDamage(player->getAttackDamage());

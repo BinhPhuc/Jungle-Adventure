@@ -1,6 +1,8 @@
 #ifndef _DEMONSLIME__H
 #define _DEMONSLIME__H
 
+#include <cstdlib>
+#include <ctime>
 #include "boss.h"
 
 class DemonSlime : public Boss {
@@ -61,6 +63,7 @@ public:
             sprites[state].tickTimed(SDL_GetTicks());
             return;
         }
+        facingLeft = (warriorX < x);
 
         if (hp < 125) {
             speed = 4.5f;
@@ -78,7 +81,7 @@ public:
             x = targetX; // Dừng lại ở targetX
             vx = 0; // Dừng di chuyển
             // Xoay hướng dựa trên vị trí của Warrior
-            facingLeft = (warriorX < x);
+//            facingLeft = (warriorX < x);
             if (state != BossState::ATTACK) { // Bỏ kiểm tra HURT
                 state = BossState::IDLE;
             }
@@ -99,6 +102,7 @@ public:
         Uint32 currentTime = SDL_GetTicks();
         // Tấn công liên tục mỗi attackSpeed giây
         if (currentTime - lastAttackTime >= attackSpeed * 1000) {
+            facingLeft = (warriorX < x);
             state = BossState::ATTACK;
             sprites[state].currentFrame = 0;
             lastAttackTime = currentTime;
@@ -111,6 +115,13 @@ public:
         if (hp <= 0) {
             hp = 0;
             state = BossState::DEATH;
+        } else {
+            // Xác suất 30% lập tức tấn công trả
+            if (rand() % 100 < 30) {
+                state = BossState::ATTACK;
+                sprites[state].currentFrame = 0;
+                lastAttackTime = SDL_GetTicks();
+            }
         }
         // Không chuyển sang trạng thái HURT, giữ nguyên trạng thái hiện tại
     }
