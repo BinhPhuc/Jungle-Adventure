@@ -8,6 +8,7 @@
 #include "flyingdemon.h"
 #include "demonslime.h"
 #include "asteroid.h"
+#include "shopitem.h"
 #include <vector>
 #include <string>
 #include <sstream>
@@ -23,7 +24,8 @@ enum GameState {
     PAUSED,
     RETURN_TO_MENU,
     VICTORY,
-    GAME_OVER
+    GAME_OVER,
+    SHOP
 };
 
 struct CharacterButton {
@@ -112,10 +114,15 @@ private:
     Chest chest;
 
     int coins = 0;
-    SDL_Rect buyHPBtn = {120, 20, 150, 50};
-    SDL_Rect buyATKBtn = {280, 20, 150, 50};
-    bool buyHPHovered = false;
-    bool buyATKHovered = false;
+    SDL_Texture* shopBackground = nullptr;
+    Sprite coinIcon;
+    std::vector<ShopItem> shopItems;
+    SDL_Rect startBattleButton;
+    SDL_Rect backShopButton;
+    bool startBattleButtonHovered;
+    bool backShopButtonHovered;
+    std::string shopMessage;
+    Uint32 shopMessageTimer;
 
     // Biến cho menu pause
     SDL_Rect btnReturnToMenu;
@@ -249,6 +256,37 @@ public:
         screenShakeMagnitude = 5; // Độ lớn rung 5 pixel
         shakeOffsetX = 0;
         shakeOffsetY = 0;
+
+        // Khởi tạo shop
+        shopBackground = graphics.loadTexture("assets/imgs/shop.png");
+        SDL_Texture* coinTex = graphics.loadTexture("assets/sprites/effects/coin.png");
+        coinIcon.initAuto(coinTex, 16, 16, 1);
+        startBattleButton = {SCREEN_WIDTH - 220, SCREEN_HEIGHT - 60, 200, 40};
+        backShopButton = {20, 20, 100, 40};
+        startBattleButtonHovered = false;
+        backShopButtonHovered = false;
+        shopMessage = "";
+        shopMessageTimer = 0;
+        initShopItems(graphics);
+    }
+
+    void initShopItems(Graphics& graphics) {
+        shopItems.clear();
+        ShopItem hpBoost;
+        hpBoost.init(graphics, ItemType::HP_BOOST, "Health Potion", "+10 HP", 10, "assets/sprites/items/hp_potion.png", 100, 200);
+        shopItems.push_back(hpBoost);
+
+        ShopItem atkBoost;
+        atkBoost.init(graphics, ItemType::ATK_BOOST, "Attack Boost", "+3 ATK", 10, "assets/sprites/items/atk_boost.png", 340, 200);
+        shopItems.push_back(atkBoost);
+
+        ShopItem speedBoost;
+        speedBoost.init(graphics, ItemType::SPEED_BOOST, "Speed Boost", "+0.5 Speed", 15, "assets/sprites/items/speed_boost.png", 580, 200);
+        shopItems.push_back(speedBoost);
+
+        ShopItem shield;
+        shield.init(graphics, ItemType::SHIELD, "Shield", "Reduce 20% DMG", 20, "assets/sprites/items/shield.png", 820, 200);
+        shopItems.push_back(shield);
     }
 
     void updateSliderKnob() {
@@ -288,8 +326,6 @@ public:
     }
 
 private:
-
-
     void addCoins(int amount) {
         int totalCoins = loadCoins() + amount;
         std::ofstream out("coins.txt");
@@ -310,44 +346,6 @@ private:
         return coins;
     }
 
-    void renderShopUI(Graphics& graphics) {
-        int mx, my;
-        SDL_GetMouseState(&mx, &my);
-        buyHPHovered = inRect(mx, my, buyHPBtn);
-        buyATKHovered = inRect(mx, my, buyATKBtn);
-
-        std::string coinStr = "Coins: " + std::to_string(coins);
-        SDL_Texture* coinTex = graphics.renderText(coinStr.c_str(), font, normalTextColor);
-        if (coinTex) {
-            int tw, th;
-            SDL_QueryTexture(coinTex, NULL, NULL, &tw, &th);
-            graphics.renderTexture(coinTex, 0, 40);
-            SDL_DestroyTexture(coinTex);
-        }
-
-        SDL_Color hpColor = buyHPHovered ? hoverTextColor : normalTextColor;
-        SDL_SetRenderDrawColor(graphics.renderer, normalBoxColor.r, normalBoxColor.g, normalBoxColor.b, normalBoxColor.a);
-        SDL_RenderFillRect(graphics.renderer, &buyHPBtn);
-        SDL_Texture* hpTex = graphics.renderText("HP (+10)", font, hpColor);
-        if (hpTex) {
-            int tw, th;
-            SDL_QueryTexture(hpTex, NULL, NULL, &tw, &th);
-            graphics.renderTexture(hpTex, buyHPBtn.x + (buyHPBtn.w - tw) / 2, buyHPBtn.y + (buyHPBtn.h - th) / 2);
-            SDL_DestroyTexture(hpTex);
-        }
-
-        SDL_Color atkColor = buyATKHovered ? hoverTextColor : normalTextColor;
-        SDL_SetRenderDrawColor(graphics.renderer, normalBoxColor.r, normalBoxColor.g, normalBoxColor.b, normalBoxColor.a);
-        SDL_RenderFillRect(graphics.renderer, &buyATKBtn);
-        SDL_Texture* atkTex = graphics.renderText("ATK (+3)", font, atkColor);
-        if (atkTex) {
-            int tw, th;
-            SDL_QueryTexture(atkTex, NULL, NULL, &tw, &th);
-            graphics.renderTexture(atkTex, buyATKBtn.x + (buyATKBtn.w - tw) / 2, buyATKBtn.y + (buyATKBtn.h - th) / 2);
-            SDL_DestroyTexture(atkTex);
-        }
-    }
-
     void fadeOut(Graphics& graphics) {
         SDL_Rect screenRect = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
         for (int alpha = 0; alpha <= 255; alpha += 5) {
@@ -356,6 +354,29 @@ private:
             SDL_RenderFillRect(graphics.renderer, &screenRect);
             SDL_RenderPresent(graphics.renderer);
             SDL_Delay(10);
+        }
+    }
+
+    void applyItemEffect(ItemType type) {
+        Warrior* warrior = dynamic_cast<Warrior*>(player);
+        if (!warrior) return;
+
+        switch (type) {
+            case ItemType::HP_BOOST:
+                warrior->setHP(warrior->getHP() + 10);
+                break;
+            case ItemType::ATK_BOOST:
+                warrior->setAttackDamage(warrior->getAttackDamage() + 3);
+                break;
+            case ItemType::SPEED_BOOST:
+                warrior->setSpeed(warrior->getSpeed() + 0.5f);
+                break;
+            case ItemType::SHIELD:
+                warrior->setShield(true);
+                break;
+            case ItemType::COIN_DROP:
+                // Logic tăng coin drop sẽ được áp dụng trong stage (có thể thêm sau)
+                break;
         }
     }
 
@@ -428,14 +449,10 @@ private:
         } else if (state == PREVIEW_STAGE) {
             readyHovered = inRect(mx, my, readyBtn);
             backHovered = inRect(mx, my, backBtn);
-            buyHPHovered = inRect(mx, my, buyHPBtn);
-            buyATKHovered = inRect(mx, my, buyATKBtn);
-
             if (e.type == SDL_MOUSEBUTTONDOWN) {
                 if (readyHovered) {
                     graphics.play(clickSound);
-                    enterBattle(graphics);
-                    state = IN_BATTLE;
+                    state = SHOP;
                 } else if (backHovered) {
                     graphics.play(clickSound);
                     state = CHOOSE_STAGE;
@@ -451,27 +468,45 @@ private:
                     if (menuMusic) {
                         graphics.play(menuMusic);
                     }
-                } else if (buyHPHovered && coins >= 10) {
-                    coins -= 10;
-                    Warrior* warrior = dynamic_cast<Warrior*>(player);
-                    if (warrior) {
-                        warrior->setHP(warrior->getHP() + 10);
-                    }
-                    addCoins(-10);
-                    graphics.play(clickSound);
-                } else if (buyATKHovered && coins >= 10) {
-                    coins -= 10;
-                    Warrior* warrior = dynamic_cast<Warrior*>(player);
-                    if (warrior) {
-                        warrior->setAttackDamage(warrior->getAttackDamage() + 3);
-                    }
-                    addCoins(-10);
-                    graphics.play(clickSound);
-                } else if (buyHPHovered && coins < 10) {
-                    graphics.play(errorClick);
-                } else if (buyATKHovered && coins < 10) {
-                    graphics.play(errorClick);
                 }
+            }
+        } else if (state == SHOP) {
+            startBattleButtonHovered = inRect(mx, my, startBattleButton);
+            backShopButtonHovered = inRect(mx, my, backShopButton);
+
+            for (auto& item : shopItems) {
+                item.update(mx, my);
+            }
+
+            if (e.type == SDL_MOUSEBUTTONDOWN) {
+                if (startBattleButtonHovered) {
+                    graphics.play(clickSound);
+                    enterBattle(graphics);
+                    state = IN_BATTLE;
+                } else if (backShopButtonHovered) {
+                    graphics.play(clickSound);
+                    state = PREVIEW_STAGE;
+                } else {
+                    for (auto& item : shopItems) {
+                        if (item.isClicked(mx, my)) {
+                            if (coins >= item.getPrice()) {
+                                coins -= item.getPrice();
+                                applyItemEffect(item.getType());
+                                addCoins(-item.getPrice());
+                                graphics.play(clickSound);
+                            } else {
+                                shopMessage = "Not Enough Coins!";
+                                shopMessageTimer = SDL_GetTicks();
+                                graphics.play(errorClick);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (shopMessageTimer > 0 && SDL_GetTicks() - shopMessageTimer >= 1000) {
+                shopMessage = "";
+                shopMessageTimer = 0;
             }
         } else if (state == IN_BATTLE) {
             player->handleEvent(e);
@@ -581,6 +616,63 @@ private:
         }
         if (state == PREVIEW_STAGE) {
             renderStagePreview(graphics);
+        } else if (state == SHOP) {
+            // Vẽ background
+            SDL_Rect backgroundRect = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+            SDL_RenderCopy(graphics.renderer, shopBackground, NULL, &backgroundRect);
+
+            // Vẽ số coin
+            graphics.renderSprite(SCREEN_WIDTH - 100, 20, coinIcon, false, 1.0f);
+            std::string coinText = std::to_string(coins);
+            SDL_Texture* coinTex = graphics.renderText(coinText.c_str(), font, normalTextColor);
+            if (coinTex) {
+                int tw, th;
+                SDL_QueryTexture(coinTex, NULL, NULL, &tw, &th);
+                graphics.renderTexture(coinTex, SCREEN_WIDTH - 60, 20);
+                SDL_DestroyTexture(coinTex);
+            }
+
+            // Vẽ các item
+            for (auto& item : shopItems) {
+                item.render(graphics, font, normalTextColor, hoverTextColor);
+            }
+
+            // Vẽ nút Start Battle
+            SDL_SetRenderDrawColor(graphics.renderer, startBattleButtonHovered ? 100 : 50, startBattleButtonHovered ? 200 : 150, 50, 255);
+            SDL_RenderFillRect(graphics.renderer, &startBattleButton);
+            SDL_SetRenderDrawColor(graphics.renderer, 255, 255, 255, 255);
+            SDL_RenderDrawRect(graphics.renderer, &startBattleButton);
+            SDL_Texture* startTex = graphics.renderText("Start Battle", font, normalTextColor);
+            if (startTex) {
+                int tw, th;
+                SDL_QueryTexture(startTex, NULL, NULL, &tw, &th);
+                graphics.renderTexture(startTex, startBattleButton.x + (startBattleButton.w - tw) / 2, startBattleButton.y + (startBattleButton.h - th) / 2);
+                SDL_DestroyTexture(startTex);
+            }
+
+            // Vẽ nút Back
+            SDL_SetRenderDrawColor(graphics.renderer, backShopButtonHovered ? 100 : 50, backShopButtonHovered ? 200 : 150, 50, 255);
+            SDL_RenderFillRect(graphics.renderer, &backShopButton);
+            SDL_SetRenderDrawColor(graphics.renderer, 255, 255, 255, 255);
+            SDL_RenderDrawRect(graphics.renderer, &backShopButton);
+            SDL_Texture* backTex = graphics.renderText("Back", font, normalTextColor);
+            if (backTex) {
+                int tw, th;
+                SDL_QueryTexture(backTex, NULL, NULL, &tw, &th);
+                graphics.renderTexture(backTex, backShopButton.x + (backShopButton.w - tw) / 2, backShopButton.y + (backShopButton.h - th) / 2);
+                SDL_DestroyTexture(backTex);
+            }
+
+            // Vẽ thông báo
+            if (!shopMessage.empty()) {
+                SDL_Texture* msgTex = graphics.renderText(shopMessage.c_str(), font, {255, 0, 0});
+                if (msgTex) {
+                    int tw, th;
+                    SDL_QueryTexture(msgTex, NULL, NULL, &tw, &th);
+                    graphics.renderTexture(msgTex, SCREEN_WIDTH / 2 - tw / 2, SCREEN_HEIGHT / 2);
+                    SDL_DestroyTexture(msgTex);
+                }
+            }
         } else if (state == IN_BATTLE || state == PAUSED) {
             renderBattle(graphics);
             if (state == PAUSED) {
@@ -878,7 +970,6 @@ private:
             graphics.renderTexture(backTex, backBtn.x + (backBtn.w - tw) / 2, backBtn.y + (backBtn.h - th) / 2);
             SDL_DestroyTexture(backTex);
         }
-        renderShopUI(graphics);
     }
 
     void enterBattle(Graphics& graphics) {

@@ -17,6 +17,8 @@ private:
     int attackCombo = 0;
     bool isInCombo = false;
     bool shouldDealDamage = false;
+    bool hasShield = false;
+    Uint32 shieldTimer = 0;
 
     // Thêm biến cho thanh nộ
     float rage = 0.0f; // Giá trị thanh nộ (0-100)
@@ -244,11 +246,21 @@ public:
         // Không cần bắn đạn, tấn công cận chiến được xử lý trong handleEvent
     }
 
+    void setSpeed(float s) { speed = s; }
+    float getSpeed() const { return speed; }
 
+    void setShield(bool active) {
+        hasShield = active;
+        if (active) shieldTimer = SDL_GetTicks();
+    }
     void takeDamage(int damage) override {
         if (state == PlayerState::DEATH) return;
         if (!isDefending) {
-            hp -= damage;
+            int finalDamage = damage;
+            if (hasShield && SDL_GetTicks() - shieldTimer < 10000) { // Shield kéo dài 10 giây
+                finalDamage = static_cast<int>(damage * 0.8f); // Giảm 20% sát thương
+            }
+            hp -= finalDamage;
             if (hp <= 0) {
                 hp = 0;
                 setState(PlayerState::DEATH);
