@@ -7,6 +7,7 @@
 #include "boss.h"
 #include "flyingdemon.h"
 #include "demonslime.h"
+#include "asteroid.h"
 #include <vector>
 #include <string>
 #include <sstream>
@@ -91,6 +92,12 @@ private:
     Player* player = nullptr;
     Boss* boss = nullptr;
     std::vector<SDL_Rect> bossProjectiles;
+    std::vector<Asteroid> asteroids;
+    bool screenShake; // Trạng thái rung màn hình
+    Uint32 screenShakeStartTime; // Thời điểm bắt đầu rung
+    int screenShakeDuration; // Thời gian rung (ms)
+    int screenShakeMagnitude; // Độ lớn của rung (pixel)
+    int shakeOffsetX, shakeOffsetY; // Offset để dịch chuyển màn hình
     Uint32 resultDisplayTime = 0;
 
     SDL_Color normalTextColor = {255, 255, 255};
@@ -235,6 +242,13 @@ public:
 
         btnBack = {SCREEN_WIDTH / 2 - 80, 320, 160, 60}; // Dịch nút Back lên trên
         btnReturnToMenu = {SCREEN_WIDTH / 2 - 80, 440, 200, 60}; // Dịch nút Return
+
+        screenShake = false;
+        screenShakeStartTime = 0;
+        screenShakeDuration = 200; // Rung trong 200ms
+        screenShakeMagnitude = 5; // Độ lớn rung 5 pixel
+        shakeOffsetX = 0;
+        shakeOffsetY = 0;
     }
 
     void updateSliderKnob() {
@@ -921,8 +935,14 @@ private:
             boss->init(graphics, 1000, 550, selectedStage, player->getX());
         }
         bossProjectiles.clear();
+        asteroids.clear();
         bossDefeated = false;
         chest.isOpened = false;
+
+        screenShake = false;
+        screenShakeStartTime = 0;
+        shakeOffsetX = 0;
+        shakeOffsetY = 0;
     }
 
     void updateBattle(Graphics& graphics) {
@@ -933,7 +953,59 @@ private:
         } else if (selectedStage == 1) {
             boss->update(player->getX());
             boss->attack(bossProjectiles, player->getX());
-            std::cout << "stage 2\n";
+            static Uint32 lastAsteroidSpawnTime = 0;
+            Uint32 currentTime = SDL_GetTicks();
+            if (currentTime - lastAsteroidSpawnTime >= 1500) { // Sinh thiên thạch mỗi 3 giây
+                if (rand() % 100 < 80) { // Xác suất 50% sinh thiên thạch
+                    Asteroid asteroid;
+                    float randomX = static_cast<float>(rand() % (SCREEN_WIDTH - 96)); // Vị trí x ngẫu nhiên
+                    asteroid.init(graphics, randomX);
+                    asteroids.push_back(asteroid);
+                }
+                lastAsteroidSpawnTime = currentTime;
+            }
+
+            // Cập nhật và kiểm tra va chạm cho các thiên thạch
+            for (auto it = asteroids.begin(); it != asteroids.end();) {
+                it->update();
+                if (!it->isActive()) {
+                    // Thiên thạch chạm đất (rơi ra ngoài màn hình), kích hoạt rung
+                    if (!screenShake) {
+                        screenShake = true;
+                        screenShakeStartTime = SDL_GetTicks();
+                    }
+                    it = asteroids.erase(it);
+                } else {
+                    SDL_Rect playerRect = {static_cast<int>(player->getX()), static_cast<int>(player->getY()), 96, 84};
+                    SDL_Rect asteroidRect = it->getRect();
+                    if (SDL_HasIntersection(&playerRect, &asteroidRect)) {
+                        player->takeDamage(it->getDamage());
+                        // Thiên thạch trúng Warrior, kích hoạt rung
+                        if (!screenShake) {
+                            screenShake = true;
+                            screenShakeStartTime = SDL_GetTicks();
+                        }
+                        it->setInactive();
+                        it = asteroids.erase(it);
+                    } else {
+                        ++it;
+                    }
+                }
+            }
+        }
+
+        if (screenShake) {
+            Uint32 elapsed = SDL_GetTicks() - screenShakeStartTime;
+            if (elapsed < static_cast<Uint32>(screenShakeDuration)) {
+                // Tạo offset ngẫu nhiên trong khoảng [-magnitude, magnitude]
+                shakeOffsetX = (rand() % (2 * screenShakeMagnitude + 1)) - screenShakeMagnitude;
+                shakeOffsetY = (rand() % (2 * screenShakeMagnitude + 1)) - screenShakeMagnitude;
+            } else {
+                // Kết thúc rung
+                screenShake = false;
+                shakeOffsetX = 0;
+                shakeOffsetY = 0;
+            }
         }
 
         Warrior* warrior = dynamic_cast<Warrior*>(player);
@@ -1043,13 +1115,24 @@ private:
     }
 
     void renderBattle(Graphics& graphics) {
+
+        SDL_Rect backgroundRect = {shakeOffsetX, shakeOffsetY, SCREEN_WIDTH, SCREEN_HEIGHT};
+        SDL_RenderCopy(graphics.renderer, currentBackground, NULL, &backgroundRect);
         for (const auto& platform : platforms) {
-            graphics.renderTexture(platform.texture, platform.rect.x, platform.rect.y);
+            SDL_Rect platformRect = platform.rect;
+            platformRect.x += shakeOffsetX;
+            platformRect.y += shakeOffsetY;
+            graphics.renderTexture(platform.texture, platformRect.x, platformRect.y);
         }
-        player->render(graphics);
-        boss->render(graphics);
+        player->render(graphics, shakeOffsetX, shakeOffsetY);
+
+    // Vẽ boss với offset rung
+        boss->render(graphics, shakeOffsetX, shakeOffsetY);
+        for (auto& asteroid : asteroids) {
+            asteroid.render(graphics, shakeOffsetX, shakeOffsetY);
+        }
         if (bossDefeated) {
-            graphics.renderSprite(chest.rect.x, chest.rect.y, chest.sprite, false, 1.0f);
+            graphics.renderSprite(chest.rect.x, chest.rect.y, chest.sprite, false, 1.0f, shakeOffsetX, shakeOffsetY);
             static Uint32 bossDefeatedTimeLocal = 0;
             if (bossDefeated && bossDefeatedTimeLocal == 0) {
                 bossDefeatedTimeLocal = SDL_GetTicks();

@@ -127,12 +127,16 @@ public:
     }
 
     // Ghi đè hàm renderProjectile (vì Demon Slime không bắn đạn)
-    void renderProjectile(Graphics& graphics, const SDL_Rect& projectile) override {
+    void renderProjectile(Graphics& graphics, const SDL_Rect& projectile, int offsetX = 0, int offsetY = 0) override {
         // Không làm gì, vì Demon Slime không có đạn
     }
 
     void render(Graphics& graphics) override {
         graphics.renderSprite(static_cast<int>(x), static_cast<int>(y), sprites[state], !facingLeft, 2.5f);
+    }
+
+    void render(Graphics& graphics, int offsetX = 0, int offsetY = 0) override {
+        graphics.renderSprite(static_cast<int>(x), static_cast<int>(y), sprites[state], !facingLeft, 2.5f, offsetX, offsetY);
     }
 
     int getAttackDamage() const override { return attackDamage; }

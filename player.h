@@ -36,13 +36,17 @@ public:
     virtual void handleEvent(const SDL_Event& e) {
     }
 
+    virtual void render(Graphics& graphics, int offsetX = 0, int offsetY = 0) {
+        graphics.renderSprite(static_cast<int>(x), static_cast<int>(y), sprites[state], facingLeft, 2.5f, offsetX, offsetY);
+    }
+
     virtual void update() {
         Uint32 now = SDL_GetTicks();
         sprites[state].tickTimed(now);
     }
 
     virtual void render(Graphics& graphics) {
-        graphics.renderSprite(static_cast<int>(x), static_cast<int>(y), sprites[state], facingLeft, 2.f);
+        graphics.renderSprite(static_cast<int>(x), static_cast<int>(y), sprites[state], facingLeft, 2.5f);
     }
 
     virtual void attack(std::vector<SDL_Rect>& projectiles) {

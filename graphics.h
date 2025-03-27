@@ -214,16 +214,15 @@ struct Graphics {
             Mix_PlayChannel( -1, gChunk, 0 );
         }
     }
-    void renderSprite(int x, int y, const Sprite& sprite, bool flip = false, float scale = 1.0f) {
-        const SDL_Rect* clip = sprite.getCurrentClip();
-        SDL_Rect renderQuad = {
-            x,
-            y,
-            static_cast<int>(clip->w * scale),
-            static_cast<int>(clip->h * scale)
+    void renderSprite(int x, int y, Sprite& sprite, bool flip, float scale = 1.0f, int offsetX = 0, int offsetY = 0) {
+        SDL_Rect src = sprite.clips[sprite.currentFrame];
+        SDL_Rect dst = {
+            x + offsetX,
+            y + offsetY,
+            static_cast<int>(src.w * scale),
+            static_cast<int>(src.h * scale)
         };
-        SDL_RendererFlip flipFlag = flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
-        SDL_RenderCopyEx(renderer, sprite.texture, clip, &renderQuad, 0, NULL, flipFlag);
+        SDL_RenderCopyEx(renderer, sprite.texture, &src, &dst, 0, nullptr, flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
     }
 
 };

@@ -34,7 +34,7 @@ public:
 
         // Tải sprite quả cầu lửa
         SDL_Texture* fireballTex = graphics.loadTexture("assets/sprites/flying_demon/fireball.png");
-        fireballSprite.initAuto(fireballTex, 48, 32, 1);
+        fireballSprite.initAuto(fireballTex, 64, 32, 5);
 
         // Điều chỉnh tốc độ animation
         for (auto& pair : sprites) {
@@ -59,7 +59,7 @@ public:
             x -= speed;
             if (x <= 800) movingRight = true;
         }
-        facingLeft = !movingRight;
+        facingLeft = false;
 
         // Cập nhật trạng thái
         if (state != BossState::ATTACK && state != BossState::HURT) {
@@ -87,7 +87,7 @@ public:
         float attackInterval = (hp > 45) ? 2000 : 1000; // Tấn công nhanh hơn khi HP dưới 50%
         if (currentTime - lastAttackTime >= attackInterval) {
             state = BossState::ATTACK;
-            SDL_Rect projectile = {static_cast<int>(x), static_cast<int>(y + 20), 32, 32};
+            SDL_Rect projectile = {static_cast<int>(x), static_cast<int>(y + 20), 64, 32};
             projectiles.push_back(projectile);
             lastAttackTime = currentTime;
         }
@@ -99,9 +99,16 @@ public:
     void render(Graphics& graphics) override {
         graphics.renderSprite(static_cast<int>(x), static_cast<int>(y), sprites[state], facingLeft, 2.f);
     }
+    void render(Graphics& graphics, int offsetX = 0, int offsetY = 0) override {
+        graphics.renderSprite(static_cast<int>(x), static_cast<int>(y), sprites[state], facingLeft, 2.f, offsetX, offsetY);
+    }
 
-    void renderProjectile(Graphics& graphics, const SDL_Rect& projectile) override {
-        graphics.renderSprite(projectile.x, projectile.y, fireballSprite, true, 1.5f);
+    void renderProjectile(Graphics& graphics, const SDL_Rect& projectile, int offsetX = 0, int offsetY = 0) override {
+        // Cập nhật animation của fireballSprite
+        fireballSprite.tickTimed(SDL_GetTicks());
+
+        // Vẽ sprite quả cầu lửa tại vị trí projectile, áp dụng offset rung màn hình
+        graphics.renderSprite(projectile.x, projectile.y, fireballSprite, facingLeft, 1.0f, offsetX, offsetY);
     }
 
     int getHP() const override { return hp; }

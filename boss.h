@@ -43,9 +43,9 @@ public:
         graphics.renderSprite(static_cast<int>(x), static_cast<int>(y), sprites[state], facingLeft, 1.5f);
     }
 
-    virtual void renderProjectile(Graphics& graphics, const SDL_Rect& projectile) {
-        // Phương thức ảo để vẽ đạn (nếu có)
-    }
+    virtual void render(Graphics& graphics, int offsetX = 0, int offsetY = 0) = 0;
+
+    virtual void renderProjectile(Graphics& graphics, const SDL_Rect& projectile, int offsetX = 0, int offsetY = 0) = 0;
 
     virtual int getHP() const { return hp; }
     virtual void takeDamage(int damage) {
