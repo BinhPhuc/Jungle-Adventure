@@ -15,6 +15,7 @@ enum class PlayerState {
     ATTACK1,
     ATTACK2,
     ATTACK3,
+    DEFEND,
     DEATH
 };
 
@@ -26,6 +27,7 @@ protected:
     int hp = 150;
     PlayerState state = PlayerState::IDLE;
     std::map<PlayerState, Sprite> sprites;
+    bool isDefending = false;
 
 public:
     virtual void init(Graphics& graphics) {
@@ -50,12 +52,14 @@ public:
     virtual void setHP(int newHP) { hp = newHP; }
     virtual void takeDamage(int damage) {
         if (state == PlayerState::DEATH) return;
-        hp -= damage;
-        if (hp <= 0) {
-            hp = 0;
-            state = PlayerState::DEATH;
-        } else {
-            state = PlayerState::HURT;
+        if (!isDefending) {
+            hp -= damage;
+            if (hp <= 0) {
+                hp = 0;
+                state = PlayerState::DEATH;
+            } else {
+                state = PlayerState::HURT;
+            }
         }
     }
     virtual float getX() const { return x; }
@@ -63,6 +67,8 @@ public:
     virtual void setY(float newY) { y = newY; }
     virtual PlayerState getState() const { return state; }
     virtual int getAttackDamage() const { return 10; }
+    bool getIsDefending() const { return isDefending; }
+    void setIsDefending(bool defending) { isDefending = defending; }
 };
 
 #endif

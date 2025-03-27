@@ -8,18 +8,20 @@ private:
     float speed = 3.5f;
     float vx = -2.0f; // Vận tốc ban đầu (di chuyển sang trái)
     Uint32 lastAttackTime = 0;
-    float attackSpeed = 2.0f; // Tấn công mỗi 2 giây
-    int attackDamage = 20; // Sát thương của boss
+    float attackSpeed = 2.5f; // Tấn công mỗi 2 giây
+    int attackDamage = 15; // Sát thương của boss
     float groundLevel = 310.0f; // Mặt đất (đồng bộ với Warrior)
     float distanceMoved = 0.0f; // Theo dõi khoảng cách di chuyển
     float minDistanceToAttack = 200.0f;
     float chaseRange = 400.0f; // Phạm vi đuổi theo tối đa
     float startX;
+    float targetX = 550.0f;
 
 public:
     void init(Graphics& graphics, float startX, float startY, int stage, float warriorX) override {
         x = startX; // 1000
         y = startY; // 550
+        this->startX = 640;
         hp = 250;
         state = BossState::FLYING; // Bắt đầu di chuyển ngay
 
@@ -62,40 +64,23 @@ public:
 
         if (hp < 125) {
             speed = 4.5f;
-            attackSpeed = 1.5f; // Tấn công nhanh hơn
-            Uint32 now = SDL_GetTicks();
+            attackSpeed = 2.0f; // Tấn công nhanh hơn khi HP thấp
         }
 
-        // Logic di chuyển đuổi theo Warrior
-        float distanceToWarrior = std::abs(warriorX - x);
-        if (distanceToWarrior <= chaseRange && state != BossState::ATTACK && state != BossState::HURT) {
-            if (warriorX < x) {
-                vx = -speed; // Đuổi sang trái
-                facingLeft = true;
-            } else {
-                vx = speed; // Đuổi sang phải
-                facingLeft = false;
+        // Logic di chuyển: di chuyển từ x = 1000 đến targetX = 750 và dừng lại
+        if (x > targetX) {
+            x += vx; // Di chuyển sang trái
+            facingLeft = true; // Quay mặt sang trái
+            if (state != BossState::ATTACK && state != BossState::HURT) {
+                state = BossState::FLYING;
             }
-            x += vx; // Cập nhật vị trí
-            state = BossState::FLYING; // Đang di chuyển
-        } else if (distanceToWarrior > chaseRange) {
-            // Quay lại vị trí ban đầu nếu Warrior quá xa
-            if (x > startX + 10) {
-                vx = -speed;
-                facingLeft = true;
-            } else if (x < startX - 10) {
-                vx = speed;
-                facingLeft = false;
-            } else {
-                vx = 0;
-                state = BossState::IDLE; // Dừng lại khi về gần vị trí gốc
+        } else {
+            x = targetX; // Dừng lại ở targetX
+            vx = 0; // Dừng di chuyển
+            if (state != BossState::ATTACK && state != BossState::HURT) {
+                state = BossState::IDLE;
             }
-            x += vx;
         }
-
-        // Giới hạn vị trí để không vượt quá màn hình
-        if (x < 0) x = 0;
-        if (x >= SCREEN_WIDTH - 720) x = SCREEN_WIDTH - 720;
 
         y = groundLevel; // Giữ trên mặt đất
 
@@ -103,20 +88,16 @@ public:
         sprites[state].tickTimed(now);
         if ((state == BossState::ATTACK && sprites[state].currentFrame == sprites[state].clips.size() - 1) ||
             (state == BossState::HURT && sprites[state].currentFrame == sprites[state].clips.size() - 1)) {
-            state = BossState::FLYING;
+            state = (x > targetX) ? BossState::FLYING : BossState::IDLE;
         }
-
-
     }
 
     void attack(std::vector<SDL_Rect>& projectiles, float warriorX) override {
-        if (state == BossState::DEATH || state == BossState::HURT) return;
+        if (state == BossState::DEATH) return;
 
         Uint32 currentTime = SDL_GetTicks();
-        float distanceToWarrior = std::abs(warriorX - x);
-
-        // Tấn công khi Warrior trong phạm vi minDistanceToAttack
-        if (currentTime - lastAttackTime >= attackSpeed * 1000 && distanceToWarrior <= minDistanceToAttack) {
+        // Tấn công liên tục mỗi attackSpeed giây
+        if (currentTime - lastAttackTime >= attackSpeed * 1000) {
             state = BossState::ATTACK;
             sprites[state].currentFrame = 0;
             lastAttackTime = currentTime;
