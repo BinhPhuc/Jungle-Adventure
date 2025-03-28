@@ -31,6 +31,7 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="archer.h" />
 		<Unit filename="asteroid.h" />
 		<Unit filename="boss.h" />
 		<Unit filename="defs.h" />
@@ -42,11 +43,7 @@
 		<Unit filename="menu.h" />
 		<Unit filename="option.h" />
 		<Unit filename="player.h" />
-		<Unit filename="shopitem.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="shopitem.h" />
-		<Unit filename="shoptime.h" />
 		<Unit filename="warrior.h" />
 		<Extensions>
 			<lib_finder disable_auto="1" />
