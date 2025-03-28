@@ -31,13 +31,17 @@ public:
         sprites[state].tickTimed(now);
     }
 
-    virtual void update(float warriorX) = 0;
+//    virtual void update(float warriorX) = 0;
+
+    virtual void update(Player* player) = 0;
 
     virtual void attack(std::vector<SDL_Rect>& projectiles) {
         // Phương thức ảo để xử lý tấn công
     }
 
     virtual void attack(std::vector<SDL_Rect>& projectiles, float warriorX) = 0;
+
+    virtual void attack(std::vector<SDL_Rect>& projectiles, Player* player) = 0;
 
     virtual void render(Graphics& graphics) {
         graphics.renderSprite(static_cast<int>(x), static_cast<int>(y), sprites[state], facingLeft, 1.5f);
@@ -64,6 +68,12 @@ public:
     virtual int getAttackDamage() const { return 10; }
     int getCurrentFrame() const {
         return sprites.at(state).currentFrame; // Trả về frame hiện tại của trạng thái hiện tại
+    }
+    int getSpriteWidth() const {
+        return sprites.at(state).getWidth();
+    }
+    int getSpriteHeight() const {
+        return sprites.at(state).getHeight();
     }
 };
 

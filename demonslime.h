@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <ctime>
 #include "boss.h"
+#include "archer.h"
 
 class DemonSlime : public Boss {
 private:
@@ -58,55 +59,76 @@ public:
 
     bool getFacingLeft() const { return facingLeft; }
 
-    void update(float warriorX) override {
+    void update(Player* player) override {
         if (state == BossState::DEATH) {
             sprites[state].tickTimed(SDL_GetTicks());
             return;
         }
+
+        Uint32 now = SDL_GetTicks();
+        float warriorX = player->getX();
         facingLeft = (warriorX < x);
 
         if (hp < 125) {
             speed = 4.5f;
-            attackSpeed = 2.0f; // Tấn công nhanh hơn khi HP thấp
+            attackSpeed = 2.0f;
         }
 
-        // Logic di chuyển: di chuyển từ x = 1000 đến targetX = 550 và dừng lại
-        if (x > targetX) {
-            x += vx; // Di chuyển sang trái
-            facingLeft = true; // Quay mặt sang trái
-            if (state != BossState::ATTACK) { // Bỏ kiểm tra HURT
-                state = BossState::FLYING;
-            }
-        } else {
-            x = targetX; // Dừng lại ở targetX
-            vx = 0; // Dừng di chuyển
-            // Xoay hướng dựa trên vị trí của Warrior
-//            facingLeft = (warriorX < x);
-            if (state != BossState::ATTACK) { // Bỏ kiểm tra HURT
+        // Logic đuổi theo nếu đối thủ là Archer
+        Archer* archer = dynamic_cast<Archer*>(player);
+        if (archer) {
+            float chaseSpeed = (hp < 125) ? 2.5f : 2.0f;
+            if (x > warriorX + 150) {
+                x -= chaseSpeed;
+                facingLeft = true;
+                if (state != BossState::ATTACK) state = BossState::FLYING;
+            } else if (x < warriorX - 150) {
+                x += chaseSpeed;
+                facingLeft = false;
+                if (state != BossState::ATTACK) state = BossState::FLYING;
+            } else if (state != BossState::ATTACK) {
                 state = BossState::IDLE;
             }
+        } else {
+            if (x > targetX) {
+                x += vx;
+                facingLeft = true;
+                if (state != BossState::ATTACK) state = BossState::FLYING;
+            } else {
+                x = targetX;
+                vx = 0;
+                if (state != BossState::ATTACK) state = BossState::IDLE;
+            }
         }
 
-        y = groundLevel; // Giữ trên mặt đất
+        if (x < 0) x = 0;
+        if (x > SCREEN_WIDTH - 288 * 2.5f) x = SCREEN_WIDTH - 288 * 2.5f;
 
-        Uint32 now = SDL_GetTicks();
+        y = groundLevel;
+
         sprites[state].tickTimed(now);
         if (state == BossState::ATTACK && sprites[state].currentFrame == sprites[state].clips.size() - 1) {
-            state = (x > targetX) ? BossState::FLYING : BossState::IDLE;
+            state = (x > targetX && !archer) ? BossState::FLYING : BossState::IDLE;
         }
     }
 
-    void attack(std::vector<SDL_Rect>& projectiles, float warriorX) override {
+    void attack(std::vector<SDL_Rect>& projectiles, Player* player) override {
         if (state == BossState::DEATH) return;
 
         Uint32 currentTime = SDL_GetTicks();
-        // Tấn công liên tục mỗi attackSpeed giây
+        float warriorX = player->getX();
         if (currentTime - lastAttackTime >= attackSpeed * 1000) {
             facingLeft = (warriorX < x);
             state = BossState::ATTACK;
             sprites[state].currentFrame = 0;
             lastAttackTime = currentTime;
         }
+    }
+
+    void attack(std::vector<SDL_Rect>& projectiles) override {
+    }
+
+    void attack(std::vector<SDL_Rect>& projectiles, float warriorX) override {
     }
 
     void takeDamage(int damage) override {

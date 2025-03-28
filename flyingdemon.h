@@ -45,7 +45,7 @@ public:
         fireballSprite.frameDelay = 100;
     }
 
-    void update() override {
+    void update(Player* player) override {
         if (state == BossState::DEATH) {
             sprites[state].tickTimed(SDL_GetTicks());
             return;
@@ -76,10 +76,6 @@ public:
             state = BossState::FLYING;
         }
     }
-
-    void update(float warriorX) override {
-    }
-
     void attack(std::vector<SDL_Rect>& projectiles) override {
         if (state == BossState::DEATH) return;
 
@@ -94,6 +90,9 @@ public:
     }
 
     void attack(std::vector<SDL_Rect>& projectiles, float warriorX) override {
+    }
+
+    void attack(std::vector<SDL_Rect>& projectiles, Player* player) override {
     }
 
     void render(Graphics& graphics) override {

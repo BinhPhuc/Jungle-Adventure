@@ -19,6 +19,15 @@ enum class PlayerState {
     DEATH
 };
 
+struct Projectile {
+    float x, y;
+    bool facingLeft;
+    Sprite sprite;
+    bool active = true;
+
+    Projectile(float _x, float _y, bool _facingLeft) : x(_x), y(_y), facingLeft(_facingLeft) {}
+};
+
 class Player {
 protected:
     float x = 100;
@@ -73,6 +82,9 @@ public:
     virtual int getAttackDamage() const { return 10; }
     bool getIsDefending() const { return isDefending; }
     void setIsDefending(bool defending) { isDefending = defending; }
+    virtual std::vector<Projectile>& getProjectiles() = 0;
+    virtual const std::vector<Projectile>& getProjectiles() const = 0;
+    virtual void deactivateProjectile(std::vector<Projectile>::iterator it) = 0;
 };
 
 #endif

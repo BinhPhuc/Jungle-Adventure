@@ -46,7 +46,7 @@
 	<fstream>
 	"graphics.h"
 
-1743101511 f:\game\game\game.h
+1743185317 f:\game\game\game.h
 	"graphics.h"
 	"player.h"
 	"warrior.h"
@@ -55,6 +55,8 @@
 	"demonslime.h"
 	"asteroid.h"
 	"shopitem.h"
+	"archer.h"
+	<algorithm>
 	<vector>
 	<string>
 	<sstream>
@@ -78,13 +80,13 @@
 	"graphics.h"
 	"camera.h"
 
-1743093658 f:\game\game\player.h
+1743178861 f:\game\game\player.h
 	"graphics.h"
 	<SDL.h>
 	<map>
 	<vector>
 
-1743092126 f:\game\game\boss.h
+1743185344 f:\game\game\boss.h
 	"graphics.h"
 	<vector>
 	<map>
@@ -95,20 +97,26 @@
 	<string>
 	<vector>
 
-1743099372 f:\game\game\warrior.h
+1743178897 f:\game\game\warrior.h
 	"player.h"
 
-1743095792 f:\game\game\flyingdemon.h
+1743185390 f:\game\game\flyingdemon.h
 	"boss.h"
 
-1743093456 f:\game\game\demonslime.h
+1743185469 f:\game\game\demonslime.h
 	<cstdlib>
 	<ctime>
 	"boss.h"
+	"archer.h"
 
 1743093457 f:\game\game\asteroid.h
 	"graphics.h"
 
 1743101432 f:\game\game\shopitem.h
 	"graphics.h"
+
+1743188417 f:\game\game\archer.h
+	"player.h"
+	"graphics.h"
+	<vector>
 

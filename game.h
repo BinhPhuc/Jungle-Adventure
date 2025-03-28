@@ -9,6 +9,9 @@
 #include "demonslime.h"
 #include "asteroid.h"
 #include "shopitem.h"
+#include "archer.h"
+
+#include <algorithm>
 #include <vector>
 #include <string>
 #include <sstream>
@@ -211,11 +214,11 @@ public:
         victorySound = graphics.loadSound("assets/sounds/victory.wav");
 
         characterButtons.push_back({"Warrior", {100, 250, 200, 80}});
-        characterButtons.push_back({"Mage", {100, 350, 200, 80}});
+        characterButtons.push_back({"Archer", {100, 350, 200, 80}});
         characterButtons.push_back({"Back", {100, 450, 200, 80}});
 
         characterPreviews.push_back({"Warrior", "A brave warrior with a mighty sword.", "assets/characters/warrior.png"});
-        characterPreviews.push_back({"Mage", "A powerful mage with magical spells.", "assets/characters/mage.png"});
+        characterPreviews.push_back({"Archer", "A skilled archer with deadly arrows.", "assets/characters/archer.png"});
 
         stageButtons.push_back({"Stage 1", {100, 250, 200, 80}});
         stageButtons.push_back({"Stage 2", {100, 350, 200, 80}});
@@ -359,24 +362,43 @@ private:
 
     void applyItemEffect(ItemType type) {
         Warrior* warrior = dynamic_cast<Warrior*>(player);
-        if (!warrior) return;
-
-        switch (type) {
-            case ItemType::HP_BOOST:
-                warrior->setHP(warrior->getHP() + 10);
-                break;
-            case ItemType::ATK_BOOST:
-                warrior->setAttackDamage(warrior->getAttackDamage() + 3);
-                break;
-            case ItemType::SPEED_BOOST:
-                warrior->setSpeed(warrior->getSpeed() + 0.5f);
-                break;
-            case ItemType::SHIELD:
-                warrior->setShield(true);
-                break;
-            case ItemType::COIN_DROP:
-                // Logic tăng coin drop sẽ được áp dụng trong stage (có thể thêm sau)
-                break;
+        Archer* archer = dynamic_cast<Archer*>(player);
+        if (warrior) {
+            switch (type) {
+                case ItemType::HP_BOOST:
+                    warrior->setHP(warrior->getHP() + 10);
+                    break;
+                case ItemType::ATK_BOOST:
+                    warrior->setAttackDamage(warrior->getAttackDamage() + 3);
+                    break;
+                case ItemType::SPEED_BOOST:
+                    warrior->setSpeed(warrior->getSpeed() + 0.5f);
+                    break;
+                case ItemType::SHIELD:
+                    warrior->setShield(true);
+                    break;
+                case ItemType::COIN_DROP:
+                    // Logic tăng coin drop sẽ được áp dụng trong stage (có thể thêm sau)
+                    break;
+            }
+        } else if (archer) {
+            switch (type) {
+                case ItemType::HP_BOOST:
+                    archer->setHP(archer->getHP() + 10);
+                    break;
+                case ItemType::ATK_BOOST:
+                    archer->setAttackDamage(archer->getAttackDamage() + 3);
+                    break;
+                case ItemType::SPEED_BOOST:
+                    archer->setSpeed(archer->getSpeed() + 0.5f);
+                    break;
+                case ItemType::SHIELD:
+                    archer->setShield(true);
+                    break;
+                case ItemType::COIN_DROP:
+                    // Logic tăng coin drop sẽ được áp dụng trong stage (có thể thêm sau)
+                    break;
+            }
         }
     }
 
@@ -404,7 +426,7 @@ private:
                     selectedCharacter = 1;
                     state = PREVIEW_CHARACTER;
                     if (!playerInitialized) { // Chỉ khởi tạo player một lần
-                        player = new Warrior(); // Hiện tại chỉ có Warrior, sau này có thể thêm Mage
+                        player = new Archer(); // Thay Warrior bằng Archer
                         player->init(graphics);
                         playerInitialized = true;
                     }
@@ -1010,7 +1032,16 @@ private:
                 warrior->getIsJumping() = false;
             }
         } else {
-            player = new Warrior();
+            Archer* archer = dynamic_cast<Archer*>(player);
+            if (archer) {
+                archer->getProjectiles().clear();
+                archer->setHP(archer->getHP() > 0 ? archer->getHP() : 100);
+                archer->setAttackDamage(archer->getAttackDamage());
+                archer->setState(PlayerState::IDLE);
+                archer->setY(550.0f);
+                archer->getJumpVelocity() = -15.0f;
+                archer->getIsJumping() = false;
+            }
         }
 
 
@@ -1039,17 +1070,20 @@ private:
     void updateBattle(Graphics& graphics) {
         player->update();
         if (selectedStage == 0) {
-            boss->update();
+            boss->update(player); // Truyền Player* thay vì float
             boss->attack(bossProjectiles);
         } else if (selectedStage == 1) {
-            boss->update(player->getX());
-            boss->attack(bossProjectiles, player->getX());
+            boss->update(player); // Truyền Player* thay vì float
+            boss->attack(bossProjectiles, player); // Truyền Player* thay vì float
+
             static Uint32 lastAsteroidSpawnTime = 0;
             Uint32 currentTime = SDL_GetTicks();
-            if (currentTime - lastAsteroidSpawnTime >= 1500) { // Sinh thiên thạch mỗi 3 giây
-                if (rand() % 100 < 80) { // Xác suất 50% sinh thiên thạch
+
+            Uint32 asteroidSpawnInterval = (dynamic_cast<Archer*>(player) != nullptr) ? 1200 : 2000;
+            if (currentTime - lastAsteroidSpawnTime >= asteroidSpawnInterval) {
+                if (rand() % 100 < 60) {
                     Asteroid asteroid;
-                    float randomX = static_cast<float>(rand() % (SCREEN_WIDTH - 96)); // Vị trí x ngẫu nhiên
+                    float randomX = static_cast<float>(rand() % (SCREEN_WIDTH - 96));
                     asteroid.init(graphics, randomX);
                     asteroids.push_back(asteroid);
                 }
@@ -1060,7 +1094,6 @@ private:
             for (auto it = asteroids.begin(); it != asteroids.end();) {
                 it->update();
                 if (!it->isActive()) {
-                    // Thiên thạch chạm đất (rơi ra ngoài màn hình), kích hoạt rung
                     if (!screenShake) {
                         screenShake = true;
                         screenShakeStartTime = SDL_GetTicks();
@@ -1071,7 +1104,6 @@ private:
                     SDL_Rect asteroidRect = it->getRect();
                     if (SDL_HasIntersection(&playerRect, &asteroidRect)) {
                         player->takeDamage(it->getDamage());
-                        // Thiên thạch trúng Warrior, kích hoạt rung
                         if (!screenShake) {
                             screenShake = true;
                             screenShakeStartTime = SDL_GetTicks();
@@ -1122,6 +1154,50 @@ private:
             }
         }
 
+        Archer* archer = dynamic_cast<Archer*>(player);
+        if (archer) {
+            for (auto it = archer->getProjectiles().begin(); it != archer->getProjectiles().end();) {
+                if (it->active) {
+                    // Hitbox của mũi tên
+                    SDL_Rect projRect = {
+                        static_cast<int>(it->x + (it->facingLeft ? -10 : 10)),
+                        static_cast<int>(it->y),
+                        static_cast<int>(it->sprite.getWidth() * 2.5f * 0.8f),
+                        static_cast<int>(it->sprite.getHeight() * 2.5f)
+                    };
+
+                    // Hitbox của boss
+                    float bossScale = (dynamic_cast<FlyingDemon*>(boss) != nullptr) ? 2.0f : 2.5f;
+                    SDL_Rect bossRect;
+                    if (dynamic_cast<FlyingDemon*>(boss)) {
+                        bossRect = {
+                            static_cast<int>(boss->getX() + 20),
+                            static_cast<int>(boss->getY() + 20),
+                            boss->getState() == BossState::DEATH ? 0 : static_cast<int>(boss->getSpriteWidth() * bossScale * 0.6f),
+                            boss->getState() == BossState::DEATH ? 0 : static_cast<int>(boss->getSpriteHeight() * bossScale * 0.8f)
+                        };
+                    } else { // DemonSlime
+                        bossRect = {
+                            static_cast<int>(boss->getX() + 100),
+                            static_cast<int>(boss->getY() + 150),
+                            boss->getState() == BossState::DEATH ? 0 : static_cast<int>(boss->getSpriteWidth() * bossScale * 0.4f),
+                            boss->getState() == BossState::DEATH ? 0 : static_cast<int>(boss->getSpriteHeight() * bossScale * 0.5f)
+                        };
+                    }
+
+                    if (SDL_HasIntersection(&projRect, &bossRect)) {
+                        SDL_Log("Arrow hit boss! Boss HP: %d", boss->getHP()); // Debug
+                        boss->takeDamage(archer->getAttackDamage());
+                        archer->deactivateProjectile(it);
+                        it = archer->getProjectiles().erase(it);
+                    } else {
+                        ++it;
+                    }
+                } else {
+                    ++it;
+                }
+            }
+        }
         if (selectedStage == 0) {
             for (auto it = bossProjectiles.begin(); it != bossProjectiles.end();) {
                 it->x -= 5;
@@ -1215,7 +1291,10 @@ private:
             platformRect.y += shakeOffsetY;
             graphics.renderTexture(platform.texture, platformRect.x, platformRect.y);
         }
-        player->render(graphics, shakeOffsetX, shakeOffsetY);
+        if (player->getHP() > 0) { // Chỉ render player nếu còn sống
+            player->render(graphics, shakeOffsetX, shakeOffsetY);
+        }
+//        player->render(graphics, shakeOffsetX, shakeOffsetY);
 
     // Vẽ boss với offset rung
         boss->render(graphics, shakeOffsetX, shakeOffsetY);
@@ -1300,6 +1379,7 @@ private:
         }
 
         Warrior* warrior = dynamic_cast<Warrior*>(player);
+        Archer* archer = dynamic_cast<Archer*>(player);
         int rageY = atkY + 30;
         if (warrior) {
             std::string rageStr = "Rage: " + std::to_string(static_cast<int>(warrior->getRage())) + "%";

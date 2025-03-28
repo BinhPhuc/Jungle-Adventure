@@ -24,6 +24,8 @@ private:
     float rage = 0.0f; // Giá trị thanh nộ (0-100)
     Uint32 rageTimer = 0; // Thời gian để tính tăng nộ
 
+    std::vector<Projectile> projectiles;
+
 public:
     void init(Graphics& graphics) override {
         hp = 120;
@@ -288,6 +290,11 @@ public:
             state = newState;
             sprites[state].currentFrame = 0; // Đặt lại frame về 0 khi chuyển trạng thái
         }
+    }
+    std::vector<Projectile>& getProjectiles() override { return projectiles; }
+    const std::vector<Projectile>& getProjectiles() const override { return projectiles; }
+    void deactivateProjectile(std::vector<Projectile>::iterator it) override {
+        if (it != projectiles.end()) it->active = false;
     }
 };
 
