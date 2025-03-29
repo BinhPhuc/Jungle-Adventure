@@ -22,7 +22,7 @@ private:
     float rollDistance = 150.0f; // Tổng khoảng cách lăn
     float currentRollDistance = 0.0f; // Khoảng cách đã lăn trong lần roll hiện tại
     Uint32 lastRollTime = 0;
-    Uint32 rollCooldown = 1500;
+    Uint32 rollCooldown = 1000;
 
     // Danh sách mũi tên (projectiles)
     std::vector<Projectile> projectiles;
@@ -34,6 +34,12 @@ private:
     Uint32 shieldTimer = 0;
 
     bool shouldShoot = false;
+
+    float rage = 0.0f; // Giá trị thanh Rage (0-100)
+    Uint32 rageTimer = 0; // Thời gian để tính tăng Rage
+    bool rageActive = false; // Trạng thái Rage đang kích hoạt
+    Uint32 rageDuration = 5000; // Thời gian hiệu ứng Rage kéo dài (5 giây)
+    Uint32 rageEndTime = 0; // Thời điểm Rage hết hiệu lực
 
 public:
     void init(Graphics& graphics) override {
@@ -71,6 +77,9 @@ public:
 
         // Khởi tạo texture cho mũi tên
         arrowTexture = graphics.loadTexture("assets/sprites/archer/ARROW.png");
+
+        rage = 0.0f;
+        rageTimer = SDL_GetTicks();
     }
 
     void handleEvent(const SDL_Event& e) override {
@@ -107,6 +116,17 @@ public:
                         lastShotTime = SDL_GetTicks();
                     }
                     break;
+                case SDLK_i: { // Kích hoạt Rage
+                    if (rage >= 100.0f && !rageActive) {
+                        rage = 0.0f; // Đặt lại thanh Rage
+                        rageTimer = SDL_GetTicks();
+                        rageActive = true;
+                        rageEndTime = SDL_GetTicks() + rageDuration; // Kéo dài 5 giây
+                        shotCooldown = 150; // Giảm cooldown bắn xuống còn 150ms
+                        attackDamage += 5; // Tăng sát thương thêm 5
+                    }
+                    break;
+                }
                 case SDLK_l: // ROLL để né đòn
                     if (SDL_GetTicks() - lastRollTime >= rollCooldown && state != PlayerState::ATTACK1) {
                         setState(PlayerState::DEFEND);
@@ -134,6 +154,20 @@ public:
         if (state == PlayerState::DEATH) {
             sprites[state].tickTimed(SDL_GetTicks());
             return;
+        }
+
+        if (rage < 100.0f && !rageActive) {
+            Uint32 currentTime = SDL_GetTicks();
+            float elapsedTime = (currentTime - rageTimer) / 1000.0f;
+            rage = (elapsedTime / 15.0f) * 100.0f; // Tăng 100% trong 15 giây
+            if (rage > 100.0f) rage = 100.0f;
+        }
+
+        // Kiểm tra hiệu ứng Rage hết hạn
+        if (rageActive && SDL_GetTicks() > rageEndTime) {
+            rageActive = false;
+            shotCooldown = 300; // Đặt lại cooldown mặc định
+            attackDamage -= 5; // Giảm sát thương về bình thường
         }
 
         x += vx;
@@ -235,6 +269,7 @@ public:
     }
     float& getJumpVelocity() { return jumpVelocity; }
     bool& getIsJumping() { return isJumping; }
+    float getRage() const { return rage; }
 
     ~Archer() {
         projectiles.clear();

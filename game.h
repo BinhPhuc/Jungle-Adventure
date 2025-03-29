@@ -153,7 +153,52 @@ private:
     bool playerInitialized = false;
 
 
+    // Thêm biến cho bảng điều khiển
+    bool showControls = false;
+    Uint32 controlsDisplayTime = 0;
+    const Uint32 controlsDuration = 5000; // Hiển thị trong 5 giây
+
 public:
+
+    void renderControls(Graphics& graphics) {
+        // Kích thước nhỏ hơn, nằm giữa nút chọn và preview
+        SDL_Rect overlay = {350, 250, 400, 250}; // x: 350, w: 400, giữa 300 và 800
+        SDL_SetRenderDrawBlendMode(graphics.renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(graphics.renderer, 0, 0, 0, 150);
+        SDL_RenderFillRect(graphics.renderer, &overlay);
+
+        // Nội dung bảng điều khiển
+        std::string controlsText;
+        if (selectedCharacter == 0) { // Warrior
+            controlsText = "Warrior:\nA/D: Move\nShift + A/D: Run\nSpace: Jump\nJ: Attack\nL: Defend\nI: Rage";
+        } else if (selectedCharacter == 1) { // Archer
+            controlsText = "Archer:\nA/D: Move\nSpace: Jump\nJ: Shoot\nL: Roll";
+        }
+
+        // Render text với font nhỏ hơn (24pt đã đủ nhỏ, nhưng giới hạn chiều rộng)
+        SDL_Color white = {255, 255, 255, 255};
+        SDL_Surface* surface = TTF_RenderText_Blended_Wrapped(font, controlsText.c_str(), white, 360); // Giới hạn chiều rộng 360px
+        if (surface) {
+            SDL_Texture* texture = SDL_CreateTextureFromSurface(graphics.renderer, surface);
+            SDL_Rect dst = {overlay.x + 20, overlay.y + 20, surface->w, surface->h};
+            SDL_RenderCopy(graphics.renderer, texture, nullptr, &dst);
+            SDL_FreeSurface(surface);
+            SDL_DestroyTexture(texture);
+        }
+
+        // Hướng dẫn phím H trong IN_BATTLE
+        if (state == IN_BATTLE) {
+            std::string hint = "Press H to toggle";
+            SDL_Surface* hintSurface = TTF_RenderText_Blended(font, hint.c_str(), white);
+            if (hintSurface) {
+                SDL_Texture* hintTexture = SDL_CreateTextureFromSurface(graphics.renderer, hintSurface);
+                SDL_Rect hintDst = {overlay.x + 20, overlay.y + overlay.h - 40, hintSurface->w, hintSurface->h};
+                SDL_RenderCopy(graphics.renderer, hintTexture, nullptr, &hintDst);
+                SDL_FreeSurface(hintSurface);
+                SDL_DestroyTexture(hintTexture);
+            }
+        }
+    }
 
     void initBackgrounds(Graphics& graphics) {
         stageBackgrounds.clear();
@@ -421,6 +466,8 @@ private:
                         player->init(graphics);
                         playerInitialized = true;
                     }
+                    showControls = true; // Bật bảng điều khiển
+                    controlsDisplayTime = SDL_GetTicks();
                 } else if (SDL_PointInRect(&mousePoint, &characterButtons[1].rect)) {
                     graphics.play(clickSound);
                     selectedCharacter = 1;
@@ -430,6 +477,8 @@ private:
                         player->init(graphics);
                         playerInitialized = true;
                     }
+                    showControls = true; // Bật bảng điều khiển
+                    controlsDisplayTime = SDL_GetTicks();
                 } else if (SDL_PointInRect(&mousePoint, &characterButtons[2].rect)) {
                     graphics.play(clickSound);
                     fadeOut(graphics);
@@ -447,6 +496,10 @@ private:
                     graphics.play(clickSound);
                     state = CHOOSE_CHARACTER;
                 }
+            }
+            // Tắt bảng sau 5 giây
+            if (showControls && SDL_GetTicks() - controlsDisplayTime >= controlsDuration) {
+                showControls = false;
             }
         } else if (state == CHOOSE_STAGE) {
             for (auto& btn : stageButtons) {
@@ -532,8 +585,17 @@ private:
             }
         } else if (state == IN_BATTLE) {
             player->handleEvent(e);
-            if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) {
-                state = PAUSED;
+            if (e.type == SDL_KEYDOWN) {
+                if (e.key.keysym.sym == SDLK_ESCAPE) {
+                    state = PAUSED;
+                } else if (e.key.keysym.sym == SDLK_h) { // Nhấn H để bật/tắt bảng
+                    showControls = !showControls;
+                    if (showControls) controlsDisplayTime = SDL_GetTicks();
+                }
+            }
+            // Tắt bảng sau 5 giây nếu đang bật
+            if (showControls && SDL_GetTicks() - controlsDisplayTime >= controlsDuration) {
+                showControls = false;
             }
         } else if (state == PAUSED) {
             returnToMenuHovered = inRect(mx, my, btnReturnToMenu);
@@ -795,6 +857,11 @@ private:
                 int ty = btnReturnToMenuGameOver.y + (btnReturnToMenuGameOver.h - th) / 2;
                 graphics.renderTexture(returnText, tx, ty);
                 SDL_DestroyTexture(returnText);
+            }
+        }
+        if (state == PREVIEW_CHARACTER || state == IN_BATTLE) {
+            if (showControls) {
+                renderControls(graphics);
             }
         }
     }
@@ -1156,6 +1223,19 @@ private:
 
         Archer* archer = dynamic_cast<Archer*>(player);
         if (archer) {
+            float y = archer->getY();
+            float& jumpVelocity = archer->getJumpVelocity();
+            for (const auto& platform : platforms) {
+                SDL_Rect playerRect = {static_cast<int>(archer->getX()), static_cast<int>(y), 64, 64};
+                if (SDL_HasIntersection(&playerRect, &platform.rect) && jumpVelocity > 0) {
+                    y = platform.rect.y - 145; // Offset dựa trên chiều cao Archer
+                    archer->setY(y);
+                    jumpVelocity = 0;
+                    archer->getIsJumping() = false;
+                    archer->setState(PlayerState::IDLE);
+                    break;
+                }
+            }
             for (auto it = archer->getProjectiles().begin(); it != archer->getProjectiles().end();) {
                 if (it->active) {
                     // Hitbox của mũi tên
@@ -1198,6 +1278,10 @@ private:
                 }
             }
         }
+//
+//        Archer* archer = dynamic_cast<Archer*>(player);
+//        if (archer) {
+//        }
         if (selectedStage == 0) {
             for (auto it = bossProjectiles.begin(); it != bossProjectiles.end();) {
                 it->x -= 5;
@@ -1393,6 +1477,20 @@ private:
                 SDL_DestroyTexture(rageTex);
             }
             SDL_Rect rageBar = {20 + rageTextWidth + 30, rageY, static_cast<int>(warrior->getRage() * 2), 10};
+            SDL_SetRenderDrawColor(graphics.renderer, 255, 165, 0, 255);
+            SDL_RenderFillRect(graphics.renderer, &rageBar);
+        } else if (archer) {
+            std::string rageStr = "Rage: " + std::to_string(static_cast<int>(archer->getRage())) + "%";
+            SDL_Texture* rageTex = graphics.renderText(rageStr.c_str(), font, normalTextColor);
+            int rageTextWidth = 0;
+            if (rageTex) {
+                int tw, th;
+                SDL_QueryTexture(rageTex, NULL, NULL, &tw, &th);
+                rageTextWidth = tw;
+                graphics.renderTexture(rageTex, 20, rageY);
+                SDL_DestroyTexture(rageTex);
+            }
+            SDL_Rect rageBar = {20 + rageTextWidth + 30, rageY, static_cast<int>(archer->getRage() * 2), 10};
             SDL_SetRenderDrawColor(graphics.renderer, 255, 165, 0, 255);
             SDL_RenderFillRect(graphics.renderer, &rageBar);
         }

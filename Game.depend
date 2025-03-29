@@ -46,7 +46,7 @@
 	<fstream>
 	"graphics.h"
 
-1743185317 f:\game\game\game.h
+1743266588 f:\game\game\game.h
 	"graphics.h"
 	"player.h"
 	"warrior.h"
@@ -115,7 +115,7 @@
 1743101432 f:\game\game\shopitem.h
 	"graphics.h"
 
-1743188417 f:\game\game\archer.h
+1743266588 f:\game\game\archer.h
 	"player.h"
 	"graphics.h"
 	<vector>
