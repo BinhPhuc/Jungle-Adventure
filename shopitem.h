@@ -33,7 +33,7 @@ public:
         price = p;
         SDL_Texture* iconTex = graphics.loadTexture(iconPath.c_str());
         icon.initAuto(iconTex, 32, 32, 1);
-        buyButtonRect = {x + 40, y + 160, 140, 50}; // Hạ thấp nút Buy xuống y + 160
+        buyButtonRect = {x + 40, y + 160, 140, 50};
         isHovered = false;
     }
 
@@ -51,46 +51,40 @@ public:
     }
 
     void render(Graphics& graphics, TTF_Font* font, SDL_Color normalTextColor, SDL_Color hoverTextColor) {
-        // Vẽ card với kích thước 220x200
-        SDL_Rect cardRect = {buyButtonRect.x - 40, buyButtonRect.y - 160, 220, 200}; // Giữ kích thước card
-        SDL_SetRenderDrawColor(graphics.renderer, 50, 50, 50, 255); // Màu xám đậm cho card
+        SDL_Rect cardRect = {buyButtonRect.x - 40, buyButtonRect.y - 160, 220, 200};
+        SDL_SetRenderDrawColor(graphics.renderer, 50, 50, 50, 255);
         SDL_RenderFillRect(graphics.renderer, &cardRect);
-        SDL_SetRenderDrawColor(graphics.renderer, 255, 215, 0, 255); // Viền vàng
+        SDL_SetRenderDrawColor(graphics.renderer, 255, 215, 0, 255);
         SDL_RenderDrawRect(graphics.renderer, &cardRect);
 
-        // Vẽ icon
-        graphics.renderSprite(cardRect.x + (cardRect.w - 32) / 2, cardRect.y + 15, icon, false, 1.0f); // Căn giữa icon
+        graphics.renderSprite(cardRect.x + (cardRect.w - 32) / 2, cardRect.y + 15, icon, false, 1.0f);
 
-        // Vẽ tên item
         SDL_Texture* nameTex = graphics.renderText(name.c_str(), font, normalTextColor);
         if (nameTex) {
             int tw, th;
             SDL_QueryTexture(nameTex, NULL, NULL, &tw, &th);
-            graphics.renderTexture(nameTex, cardRect.x + (cardRect.w - tw) / 2, cardRect.y + 60); // Căn giữa tên
+            graphics.renderTexture(nameTex, cardRect.x + (cardRect.w - tw) / 2, cardRect.y + 60);
             SDL_DestroyTexture(nameTex);
         }
 
-        // Vẽ mô tả
         SDL_Texture* descTex = graphics.renderText(description.c_str(), font, {200, 200, 200});
         if (descTex) {
             int tw, th;
             SDL_QueryTexture(descTex, NULL, NULL, &tw, &th);
-            graphics.renderTexture(descTex, cardRect.x + (cardRect.w - tw) / 2, cardRect.y + 90); // Căn giữa mô tả
+            graphics.renderTexture(descTex, cardRect.x + (cardRect.w - tw) / 2, cardRect.y + 90);
             SDL_DestroyTexture(descTex);
         }
 
-        // Vẽ giá
         std::string priceText = std::to_string(price) + " Coins";
         SDL_Texture* priceTex = graphics.renderText(priceText.c_str(), font, {255, 215, 0});
         if (priceTex) {
             int tw, th;
             SDL_QueryTexture(priceTex, NULL, NULL, &tw, &th);
-            graphics.renderTexture(priceTex, cardRect.x + (cardRect.w - tw) / 2, cardRect.y + 120); // Căn giữa giá
+            graphics.renderTexture(priceTex, cardRect.x + (cardRect.w - tw) / 2, cardRect.y + 120);
             SDL_DestroyTexture(priceTex);
         }
 
-        // Vẽ nút Buy
-        SDL_SetRenderDrawColor(graphics.renderer, isHovered ? 100 : 50, isHovered ? 200 : 150, 50, 255); // Xanh lá, sáng hơn khi hover
+        SDL_SetRenderDrawColor(graphics.renderer, isHovered ? 100 : 50, isHovered ? 200 : 150, 50, 255);
         SDL_RenderFillRect(graphics.renderer, &buyButtonRect);
         SDL_SetRenderDrawColor(graphics.renderer, 255, 255, 255, 255);
         SDL_RenderDrawRect(graphics.renderer, &buyButtonRect);

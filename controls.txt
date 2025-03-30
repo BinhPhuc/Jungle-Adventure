@@ -1,0 +1,6 @@
+4 Move Left
+7 Move Right
+44 Jump
+13 Shoot
+15 Roll
+12 Rage

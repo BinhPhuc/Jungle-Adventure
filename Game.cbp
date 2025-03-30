@@ -34,6 +34,7 @@
 		<Unit filename="archer.h" />
 		<Unit filename="asteroid.h" />
 		<Unit filename="boss.h" />
+		<Unit filename="controls.h" />
 		<Unit filename="defs.h" />
 		<Unit filename="demonslime.h" />
 		<Unit filename="flyingdemon.h" />

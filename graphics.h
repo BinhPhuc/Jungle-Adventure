@@ -13,7 +13,7 @@ struct Sprite {
     std::vector<SDL_Rect> clips;
     int currentFrame = 0;
     Uint32 lastFrameTime = 0;
-    int frameDelay = 100; // thời gian giữa các frame (ms)
+    int frameDelay = 100;
 
     void init(SDL_Texture* _texture, int frames, const int _clips[][4]) {
         texture = _texture;
@@ -38,9 +38,7 @@ struct Sprite {
         texture = _texture;
         clips.clear();
         for (int i = 0; i < frameCount; i++) {
-            // Tính toán vị trí x của frame trong hàng
             int x = startX + i * frameWidth;
-            // Tính toán vị trí y dựa trên hàng (row) được chọn
             int y = startY + row * frameHeight;
             SDL_Rect clip = { x, y, frameWidth, frameHeight };
             clips.push_back(clip);
@@ -227,4 +225,4 @@ struct Graphics {
 
 };
 
-#endif // _GRAPHICS__H
+#endif

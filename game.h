@@ -66,6 +66,12 @@ struct Chest {
     bool isOpened = false;
 };
 
+struct ControlKey {
+    SDL_Scancode key;
+    std::string action;
+    SDL_Texture* keyTexture;
+};
+
 class Game {
 private:
     GameState state = CHOOSE_CHARACTER;
@@ -98,11 +104,11 @@ private:
     Boss* boss = nullptr;
     std::vector<SDL_Rect> bossProjectiles;
     std::vector<Asteroid> asteroids;
-    bool screenShake; // Trạng thái rung màn hình
-    Uint32 screenShakeStartTime; // Thời điểm bắt đầu rung
-    int screenShakeDuration; // Thời gian rung (ms)
-    int screenShakeMagnitude; // Độ lớn của rung (pixel)
-    int shakeOffsetX, shakeOffsetY; // Offset để dịch chuyển màn hình
+    bool screenShake;
+    Uint32 screenShakeStartTime;
+    int screenShakeDuration;
+    int screenShakeMagnitude;
+    int shakeOffsetX, shakeOffsetY;
     Uint32 resultDisplayTime = 0;
 
     SDL_Color normalTextColor = {255, 255, 255};
@@ -110,7 +116,7 @@ private:
     SDL_Color normalBoxColor = {0, 0, 0, 180};
     SDL_Color hoverBoxColor = {50, 50, 50, 220};
 
-    std::string playerName = "Player"; // Tên người chơi mặc định
+    std::string playerName = "Player";
 
     std::vector<Platform> platforms;
     bool bossDefeated = false;
@@ -136,14 +142,13 @@ private:
     SDL_Color textColor = {255, 255, 255};
     SDL_Color highlightColor = {100, 255, 100};
 
-    // Timer cho bossDefeated
     Uint32 bossDefeatedTime = 0;
 
     Uint32 playerDeathTime = 0;
     bool playerDead = false;
 
     SDL_Rect btnRetry;
-    SDL_Rect btnReturnToMenuGameOver; // Đặt tên khác để tránh trùng với btnReturnToMenu trong menu pause
+    SDL_Rect btnReturnToMenuGameOver;
     bool retryHovered = false;
     bool returnToMenuGameOverHovered = false;
 
@@ -153,48 +158,53 @@ private:
     bool playerInitialized = false;
 
 
-    // Thêm biến cho bảng điều khiển
     bool showControls = false;
     Uint32 controlsDisplayTime = 0;
-    const Uint32 controlsDuration = 5000; // Hiển thị trong 5 giây
+    const Uint32 controlsDuration = 5000;
 
+    std::vector<ControlKey> controls;
 public:
 
     void renderControls(Graphics& graphics) {
-        // Kích thước nhỏ hơn, nằm giữa nút chọn và preview
-        SDL_Rect overlay = {350, 250, 400, 250}; // x: 350, w: 400, giữa 300 và 800
+        SDL_Rect overlay;
+        if (state == PREVIEW_CHARACTER) {
+            overlay = {350, 250, 400, 300};
+        } else if (state == IN_BATTLE) {
+            overlay = {(SCREEN_WIDTH - 400) / 2, (SCREEN_HEIGHT - 300) / 2, 400, 300};
+        }
         SDL_SetRenderDrawBlendMode(graphics.renderer, SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(graphics.renderer, 0, 0, 0, 150);
         SDL_RenderFillRect(graphics.renderer, &overlay);
 
-        // Nội dung bảng điều khiển
-        std::string controlsText;
-        if (selectedCharacter == 0) { // Warrior
-            controlsText = "Warrior:\nA/D: Move\nShift + A/D: Run\nSpace: Jump\nJ: Attack\nL: Defend\nI: Rage";
-        } else if (selectedCharacter == 1) { // Archer
-            controlsText = "Archer:\nA/D: Move\nSpace: Jump\nJ: Shoot\nL: Roll";
-        }
-
-        // Render text với font nhỏ hơn (24pt đã đủ nhỏ, nhưng giới hạn chiều rộng)
+        int currentY = overlay.y + 20;
         SDL_Color white = {255, 255, 255, 255};
-        SDL_Surface* surface = TTF_RenderText_Blended_Wrapped(font, controlsText.c_str(), white, 360); // Giới hạn chiều rộng 360px
-        if (surface) {
-            SDL_Texture* texture = SDL_CreateTextureFromSurface(graphics.renderer, surface);
-            SDL_Rect dst = {overlay.x + 20, overlay.y + 20, surface->w, surface->h};
-            SDL_RenderCopy(graphics.renderer, texture, nullptr, &dst);
-            SDL_FreeSurface(surface);
-            SDL_DestroyTexture(texture);
+        for (const auto& control : controls) {
+            SDL_Rect keyRect = {overlay.x + 20, currentY, 32, 32};
+            SDL_RenderCopy(graphics.renderer, control.keyTexture, nullptr, &keyRect);
+
+            SDL_Texture* actionText = graphics.renderText(control.action.c_str(), font, white);
+            if (actionText) {
+                int textW, textH;
+                SDL_QueryTexture(actionText, nullptr, nullptr, &textW, &textH);
+                SDL_Rect textRect = {overlay.x + 60, currentY + (32 - textH) / 2, textW, textH};
+                SDL_RenderCopy(graphics.renderer, actionText, nullptr, &textRect);
+                SDL_DestroyTexture(actionText);
+            }
+            currentY += 40;
         }
 
-        // Hướng dẫn phím H trong IN_BATTLE
         if (state == IN_BATTLE) {
             std::string hint = "Press H to toggle";
-            SDL_Surface* hintSurface = TTF_RenderText_Blended(font, hint.c_str(), white);
-            if (hintSurface) {
-                SDL_Texture* hintTexture = SDL_CreateTextureFromSurface(graphics.renderer, hintSurface);
-                SDL_Rect hintDst = {overlay.x + 20, overlay.y + overlay.h - 40, hintSurface->w, hintSurface->h};
+            SDL_Texture* hintTexture = graphics.renderText(hint.c_str(), font, white);
+            if (hintTexture) {
+                int tw, th;
+                SDL_QueryTexture(hintTexture, nullptr, nullptr, &tw, &th);
+                SDL_Rect hintDst = {
+                    overlay.x + (overlay.w - tw) / 2,
+                    overlay.y + overlay.h - th - 10,
+                    tw, th
+                };
                 SDL_RenderCopy(graphics.renderer, hintTexture, nullptr, &hintDst);
-                SDL_FreeSurface(hintSurface);
                 SDL_DestroyTexture(hintTexture);
             }
         }
@@ -209,6 +219,8 @@ public:
         font = graphics.loadFont("assets/font/Coiny-Regular.ttf", 24);
         buttonFont = graphics.loadFont("assets/font/Coiny-Regular.ttf", 32);
         titleFont = graphics.loadFont("assets/font/Coiny-Regular.ttf", 48);
+
+        loadControls(graphics);
 
         Platform platform1;
         platform1.rect = {400, 400, 154, 53};
@@ -230,10 +242,10 @@ public:
             std::string line;
             if (std::getline(configFile, line)) {
                 try {
-                    volume = std::stoi(line); // Đọc volume từ dòng đầu tiên
-                    Mix_VolumeMusic(volume * 128 / 100); // Áp dụng âm lượng
+                    volume = std::stoi(line);
+                    Mix_VolumeMusic(volume * 128 / 100);
                 } catch (...) {
-                    volume = 50; // Giá trị mặc định nếu không đọc được
+                    volume = 50;
                     Mix_VolumeMusic(volume * 128 / 100);
                 }
             }
@@ -243,10 +255,10 @@ public:
             configFile.close();
         } else {
             playerName = "Player";
-            volume = 50; // Giá trị mặc định nếu không có file
+            volume = 50;
             Mix_VolumeMusic(volume * 128 / 100);
         }
-        updateSliderKnob(); // Cập nhật vị trí thanh trượt dựa trên volume
+        updateSliderKnob();
 
         currentBackground = graphics.loadTexture("assets/imgs/bg.png");
         initBackgrounds(graphics);
@@ -295,17 +307,16 @@ public:
         btnRetry = {SCREEN_WIDTH / 2 - 200, 400, 160, 60};
         btnReturnToMenuGameOver = {SCREEN_WIDTH / 2 + 40, 400, 200, 60};
 
-        btnBack = {SCREEN_WIDTH / 2 - 80, 320, 160, 60}; // Dịch nút Back lên trên
-        btnReturnToMenu = {SCREEN_WIDTH / 2 - 80, 440, 200, 60}; // Dịch nút Return
+        btnBack = {SCREEN_WIDTH / 2 - 100, 350, 200, 60};
+        btnReturnToMenu = {SCREEN_WIDTH / 2 - 100, 420, 200, 60};
 
         screenShake = false;
         screenShakeStartTime = 0;
-        screenShakeDuration = 200; // Rung trong 200ms
-        screenShakeMagnitude = 5; // Độ lớn rung 5 pixel
+        screenShakeDuration = 200;
+        screenShakeMagnitude = 5;
         shakeOffsetX = 0;
         shakeOffsetY = 0;
 
-        // Khởi tạo shop
         shopBackground = graphics.loadTexture("assets/imgs/shop.png");
         SDL_Texture* coinTex = graphics.loadTexture("assets/sprites/effects/coin.png");
         coinIcon.initAuto(coinTex, 16, 16, 1);
@@ -320,20 +331,27 @@ public:
 
     void initShopItems(Graphics& graphics) {
         shopItems.clear();
+        const int itemWidth = 200;
+        const int spacing = 40;
+        const int totalItems = 4;
+        const int totalWidth = totalItems * itemWidth + (totalItems - 1) * spacing;
+        const int startX = (SCREEN_WIDTH - totalWidth) / 2;
+        const int itemY = 200;
+
         ShopItem hpBoost;
-        hpBoost.init(graphics, ItemType::HP_BOOST, "Health Potion", "+10 HP", 10, "assets/sprites/items/hp_potion.png", 100, 200);
+        hpBoost.init(graphics, ItemType::HP_BOOST, "Health Potion", "+10 HP", 10, "assets/sprites/items/hp_potion.png", startX, itemY);
         shopItems.push_back(hpBoost);
 
         ShopItem atkBoost;
-        atkBoost.init(graphics, ItemType::ATK_BOOST, "Attack Boost", "+3 ATK", 10, "assets/sprites/items/atk_boost.png", 340, 200);
+        atkBoost.init(graphics, ItemType::ATK_BOOST, "Attack Boost", "+3 ATK", 10, "assets/sprites/items/atk_boost.png", startX + itemWidth + spacing, itemY);
         shopItems.push_back(atkBoost);
 
         ShopItem speedBoost;
-        speedBoost.init(graphics, ItemType::SPEED_BOOST, "Speed Boost", "+0.5 Speed", 15, "assets/sprites/items/speed_boost.png", 580, 200);
+        speedBoost.init(graphics, ItemType::SPEED_BOOST, "Speed Boost", "+0.5 Speed", 15, "assets/sprites/items/speed_boost.png", startX + 2 * (itemWidth + spacing), itemY);
         shopItems.push_back(speedBoost);
 
         ShopItem shield;
-        shield.init(graphics, ItemType::SHIELD, "Shield", "Reduce 20% DMG", 20, "assets/sprites/items/shield.png", 820, 200);
+        shield.init(graphics, ItemType::SHIELD, "Shield", "Reduce 20% DMG", 20, "assets/sprites/items/shield.png", startX + 3 * (itemWidth + spacing), itemY);
         shopItems.push_back(shield);
     }
 
@@ -359,12 +377,10 @@ public:
                 }
             }
 
-            // Cập nhật logic game
             if (state == IN_BATTLE) {
                 updateBattle(graphics);
             }
 
-            // Vẽ giao diện
             graphics.prepareScene(currentBackground);
             render(graphics);
             graphics.presentScene();
@@ -423,7 +439,6 @@ private:
                     warrior->setShield(true);
                     break;
                 case ItemType::COIN_DROP:
-                    // Logic tăng coin drop sẽ được áp dụng trong stage (có thể thêm sau)
                     break;
             }
         } else if (archer) {
@@ -441,7 +456,6 @@ private:
                     archer->setShield(true);
                     break;
                 case ItemType::COIN_DROP:
-                    // Logic tăng coin drop sẽ được áp dụng trong stage (có thể thêm sau)
                     break;
             }
         }
@@ -461,23 +475,25 @@ private:
                     graphics.play(clickSound);
                     selectedCharacter = 0;
                     state = PREVIEW_CHARACTER;
-                    if (!playerInitialized) { // Chỉ khởi tạo player một lần
+                    if (!playerInitialized) {
                         player = new Warrior();
                         player->init(graphics);
                         playerInitialized = true;
                     }
-                    showControls = true; // Bật bảng điều khiển
+                    loadControls(graphics);
+                    showControls = true;
                     controlsDisplayTime = SDL_GetTicks();
                 } else if (SDL_PointInRect(&mousePoint, &characterButtons[1].rect)) {
                     graphics.play(clickSound);
                     selectedCharacter = 1;
                     state = PREVIEW_CHARACTER;
-                    if (!playerInitialized) { // Chỉ khởi tạo player một lần
-                        player = new Archer(); // Thay Warrior bằng Archer
+                    if (!playerInitialized) {
+                        player = new Archer();
                         player->init(graphics);
                         playerInitialized = true;
                     }
-                    showControls = true; // Bật bảng điều khiển
+                    loadControls(graphics);
+                    showControls = true;
                     controlsDisplayTime = SDL_GetTicks();
                 } else if (SDL_PointInRect(&mousePoint, &characterButtons[2].rect)) {
                     graphics.play(clickSound);
@@ -497,7 +513,6 @@ private:
                     state = CHOOSE_CHARACTER;
                 }
             }
-            // Tắt bảng sau 5 giây
             if (showControls && SDL_GetTicks() - controlsDisplayTime >= controlsDuration) {
                 showControls = false;
             }
@@ -536,7 +551,6 @@ private:
                         currentBackground = nullptr;
                     }
                     currentBackground = graphics.loadTexture("assets/imgs/bg.png");
-                    // Dừng battleMusic và phát menuMusic
                     if (Mix_PlayingMusic()) {
                         Mix_HaltMusic();
                     }
@@ -588,12 +602,11 @@ private:
             if (e.type == SDL_KEYDOWN) {
                 if (e.key.keysym.sym == SDLK_ESCAPE) {
                     state = PAUSED;
-                } else if (e.key.keysym.sym == SDLK_h) { // Nhấn H để bật/tắt bảng
+                } else if (e.key.keysym.sym == SDLK_h) {
                     showControls = !showControls;
                     if (showControls) controlsDisplayTime = SDL_GetTicks();
                 }
             }
-            // Tắt bảng sau 5 giây nếu đang bật
             if (showControls && SDL_GetTicks() - controlsDisplayTime >= controlsDuration) {
                 showControls = false;
             }
@@ -618,7 +631,6 @@ private:
                 } else if (backPauseHovered) {
                     graphics.play(clickSound);
                     state = IN_BATTLE;
-                    // Lưu âm lượng khi nhấn nút Back
                     std::ofstream out("config.txt");
                     if (out) {
                         out << volume << "\n";
@@ -646,7 +658,6 @@ private:
                     }
                     currentBackground = graphics.loadTexture("assets/imgs/bg.png");
                     initBackgrounds(graphics);
-                    // Dừng battleMusic và phát menuMusic
                     if (Mix_PlayingMusic()) {
                         Mix_HaltMusic();
                     }
@@ -663,9 +674,9 @@ private:
                 if (retryHovered) {
                     graphics.play(clickSound);
                     initBackgrounds(graphics);
-                    enterBattle(graphics); // Khởi tạo lại stage hiện tại
+                    enterBattle(graphics);
                     state = IN_BATTLE;
-                    playerDead = false; // Reset trạng thái
+                    playerDead = false;
                 } else if (returnToMenuGameOverHovered) {
                     graphics.play(clickSound);
                     fadeOut(graphics);
@@ -701,11 +712,9 @@ private:
         if (state == PREVIEW_STAGE) {
             renderStagePreview(graphics);
         } else if (state == SHOP) {
-            // Vẽ background
             SDL_Rect backgroundRect = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
             SDL_RenderCopy(graphics.renderer, shopBackground, NULL, &backgroundRect);
 
-            // Vẽ số coin
             graphics.renderSprite(SCREEN_WIDTH - 100, 20, coinIcon, false, 1.0f);
             std::string coinText = std::to_string(coins);
             SDL_Texture* coinTex = graphics.renderText(coinText.c_str(), font, normalTextColor);
@@ -716,12 +725,10 @@ private:
                 SDL_DestroyTexture(coinTex);
             }
 
-            // Vẽ các item
             for (auto& item : shopItems) {
                 item.render(graphics, font, normalTextColor, hoverTextColor);
             }
 
-            // Vẽ nút Start Battle
             SDL_SetRenderDrawColor(graphics.renderer, startBattleButtonHovered ? 100 : 50, startBattleButtonHovered ? 200 : 150, 50, 255);
             SDL_RenderFillRect(graphics.renderer, &startBattleButton);
             SDL_SetRenderDrawColor(graphics.renderer, 255, 255, 255, 255);
@@ -734,7 +741,6 @@ private:
                 SDL_DestroyTexture(startTex);
             }
 
-            // Vẽ nút Back
             SDL_SetRenderDrawColor(graphics.renderer, backShopButtonHovered ? 100 : 50, backShopButtonHovered ? 200 : 150, 50, 255);
             SDL_RenderFillRect(graphics.renderer, &backShopButton);
             SDL_SetRenderDrawColor(graphics.renderer, 255, 255, 255, 255);
@@ -747,7 +753,6 @@ private:
                 SDL_DestroyTexture(backTex);
             }
 
-            // Vẽ thông báo
             if (!shopMessage.empty()) {
                 SDL_Texture* msgTex = graphics.renderText(shopMessage.c_str(), font, {255, 0, 0});
                 if (msgTex) {
@@ -793,8 +798,8 @@ private:
                 SDL_DestroyTexture(valTex);
 
                 SDL_SetRenderDrawBlendMode(graphics.renderer, SDL_BLENDMODE_BLEND);
-                SDL_Color boxColorBack = backHovered ? SDL_Color{50, 50, 50, 220} : SDL_Color{0, 0, 0, 180};
-                SDL_Color textColBack = backHovered ? highlightColor : textColor;
+                SDL_Color boxColorBack = backPauseHovered ? SDL_Color{50, 50, 50, 220} : SDL_Color{0, 0, 0, 180};
+                SDL_Color textColBack = backPauseHovered ? highlightColor : textColor;
                 SDL_SetRenderDrawColor(graphics.renderer, boxColorBack.r, boxColorBack.g, boxColorBack.b, boxColorBack.a);
                 SDL_RenderFillRect(graphics.renderer, &btnBack);
                 SDL_Texture* backText = graphics.renderText("Back", font, textColBack);
@@ -827,7 +832,6 @@ private:
         } else if (state == GAME_OVER) {
             renderResult(graphics, "Game Over!");
 
-            // Vẽ nút RETRY
             SDL_SetRenderDrawBlendMode(graphics.renderer, SDL_BLENDMODE_BLEND);
             SDL_Color boxColorRetry = retryHovered ? SDL_Color{50, 50, 50, 220} : SDL_Color{0, 0, 0, 180};
             SDL_Color textColRetry = retryHovered ? hoverTextColor : normalTextColor;
@@ -843,7 +847,6 @@ private:
                 SDL_DestroyTexture(retryText);
             }
 
-            // Vẽ nút RETURN TO MENU
             SDL_SetRenderDrawBlendMode(graphics.renderer, SDL_BLENDMODE_BLEND);
             SDL_Color boxColorReturn = returnToMenuGameOverHovered ? SDL_Color{50, 50, 50, 220} : SDL_Color{0, 0, 0, 180};
             SDL_Color textColReturn = returnToMenuGameOverHovered ? hoverTextColor : normalTextColor;
@@ -1091,11 +1094,11 @@ private:
         if (selectedCharacter == 0) {
             Warrior* warrior = dynamic_cast<Warrior*>(player);
             if (warrior) {
-                warrior->setHP(warrior->getHP() > 0 ? warrior->getHP() : 120); // Giữ nguyên HP đã nâng cấp
-                warrior->setAttackDamage(warrior->getAttackDamage()); // Giữ nguyên ATK đã nâng cấp
-                warrior->setState(PlayerState::IDLE); // Reset trạng thái
-                warrior->setY(550.0f); // Đặt lại vị trí mặt đất
-                warrior->getJumpVelocity() = -15.0f; // Reset nhảy
+                warrior->setHP(warrior->getHP() > 0 ? warrior->getHP() : 120);
+                warrior->setAttackDamage(warrior->getAttackDamage());
+                warrior->setState(PlayerState::IDLE);
+                warrior->setY(550.0f);
+                warrior->getJumpVelocity() = -15.0f;
                 warrior->getIsJumping() = false;
             }
         } else {
@@ -1137,11 +1140,11 @@ private:
     void updateBattle(Graphics& graphics) {
         player->update();
         if (selectedStage == 0) {
-            boss->update(player); // Truyền Player* thay vì float
+            boss->update(player);
             boss->attack(bossProjectiles);
         } else if (selectedStage == 1) {
-            boss->update(player); // Truyền Player* thay vì float
-            boss->attack(bossProjectiles, player); // Truyền Player* thay vì float
+            boss->update(player);
+            boss->attack(bossProjectiles, player);
 
             static Uint32 lastAsteroidSpawnTime = 0;
             Uint32 currentTime = SDL_GetTicks();
@@ -1157,7 +1160,6 @@ private:
                 lastAsteroidSpawnTime = currentTime;
             }
 
-            // Cập nhật và kiểm tra va chạm cho các thiên thạch
             for (auto it = asteroids.begin(); it != asteroids.end();) {
                 it->update();
                 if (!it->isActive()) {
@@ -1187,11 +1189,9 @@ private:
         if (screenShake) {
             Uint32 elapsed = SDL_GetTicks() - screenShakeStartTime;
             if (elapsed < static_cast<Uint32>(screenShakeDuration)) {
-                // Tạo offset ngẫu nhiên trong khoảng [-magnitude, magnitude]
                 shakeOffsetX = (rand() % (2 * screenShakeMagnitude + 1)) - screenShakeMagnitude;
                 shakeOffsetY = (rand() % (2 * screenShakeMagnitude + 1)) - screenShakeMagnitude;
             } else {
-                // Kết thúc rung
                 screenShake = false;
                 shakeOffsetX = 0;
                 shakeOffsetY = 0;
@@ -1228,7 +1228,7 @@ private:
             for (const auto& platform : platforms) {
                 SDL_Rect playerRect = {static_cast<int>(archer->getX()), static_cast<int>(y), 64, 64};
                 if (SDL_HasIntersection(&playerRect, &platform.rect) && jumpVelocity > 0) {
-                    y = platform.rect.y - 145; // Offset dựa trên chiều cao Archer
+                    y = platform.rect.y - 145;
                     archer->setY(y);
                     jumpVelocity = 0;
                     archer->getIsJumping() = false;
@@ -1238,7 +1238,6 @@ private:
             }
             for (auto it = archer->getProjectiles().begin(); it != archer->getProjectiles().end();) {
                 if (it->active) {
-                    // Hitbox của mũi tên
                     SDL_Rect projRect = {
                         static_cast<int>(it->x + (it->facingLeft ? -10 : 10)),
                         static_cast<int>(it->y),
@@ -1246,7 +1245,6 @@ private:
                         static_cast<int>(it->sprite.getHeight() * 2.5f)
                     };
 
-                    // Hitbox của boss
                     float bossScale = (dynamic_cast<FlyingDemon*>(boss) != nullptr) ? 2.0f : 2.5f;
                     SDL_Rect bossRect;
                     if (dynamic_cast<FlyingDemon*>(boss)) {
@@ -1256,7 +1254,7 @@ private:
                             boss->getState() == BossState::DEATH ? 0 : static_cast<int>(boss->getSpriteWidth() * bossScale * 0.6f),
                             boss->getState() == BossState::DEATH ? 0 : static_cast<int>(boss->getSpriteHeight() * bossScale * 0.8f)
                         };
-                    } else { // DemonSlime
+                    } else {
                         bossRect = {
                             static_cast<int>(boss->getX() + 100),
                             static_cast<int>(boss->getY() + 150),
@@ -1266,7 +1264,7 @@ private:
                     }
 
                     if (SDL_HasIntersection(&projRect, &bossRect)) {
-                        SDL_Log("Arrow hit boss! Boss HP: %d", boss->getHP()); // Debug
+                        SDL_Log("Arrow hit boss! Boss HP: %d", boss->getHP());
                         boss->takeDamage(archer->getAttackDamage());
                         archer->deactivateProjectile(it);
                         it = archer->getProjectiles().erase(it);
@@ -1278,10 +1276,7 @@ private:
                 }
             }
         }
-//
-//        Archer* archer = dynamic_cast<Archer*>(player);
-//        if (archer) {
-//        }
+
         if (selectedStage == 0) {
             for (auto it = bossProjectiles.begin(); it != bossProjectiles.end();) {
                 it->x -= 5;
@@ -1309,7 +1304,6 @@ private:
                     bool facingLeft = demonSlime->getFacingLeft();
                     float warriorX = player->getX();
                     float demonX = boss->getX();
-                    // Chỉ gây sát thương khi hướng của DemonSlime khớp với vị trí của Warrior
                     if ((facingLeft && warriorX < demonX) || (!facingLeft && warriorX > demonX)) {
                         player->takeDamage(boss->getAttackDamage());
                         lastBossAttackTime = currentTime;
@@ -1357,7 +1351,7 @@ private:
 
         if (playerDead) {
             Uint32 currentTime = SDL_GetTicks();
-            if (currentTime - playerDeathTime >= 5000) { // 5000ms = 5 giây
+            if (currentTime - playerDeathTime >= 5000) {
                 state = GAME_OVER;
                 resultDisplayTime = SDL_GetTicks();
                 playerDead = false;
@@ -1375,12 +1369,10 @@ private:
             platformRect.y += shakeOffsetY;
             graphics.renderTexture(platform.texture, platformRect.x, platformRect.y);
         }
-        if (player->getHP() > 0) { // Chỉ render player nếu còn sống
+        if (player->getHP() > 0) {
             player->render(graphics, shakeOffsetX, shakeOffsetY);
         }
-//        player->render(graphics, shakeOffsetX, shakeOffsetY);
 
-    // Vẽ boss với offset rung
         boss->render(graphics, shakeOffsetX, shakeOffsetY);
         for (auto& asteroid : asteroids) {
             asteroid.render(graphics, shakeOffsetX, shakeOffsetY);
@@ -1550,6 +1542,32 @@ private:
         return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
     }
 
+    void loadControls(Graphics& graphics) {
+        controls.clear();
+        if (selectedCharacter == 0) {
+            controls.push_back({SDL_SCANCODE_A, "Move Left", graphics.loadTexture("assets/sprites/keyboard/A.png")});
+            controls.push_back({SDL_SCANCODE_D, "Move Right", graphics.loadTexture("assets/sprites/keyboard/D.png")});
+            controls.push_back({SDL_SCANCODE_SPACE, "Jump", graphics.loadTexture("assets/sprites/keyboard/SPACE.png")});
+            controls.push_back({SDL_SCANCODE_J, "Attack", graphics.loadTexture("assets/sprites/keyboard/J.png")});
+            controls.push_back({SDL_SCANCODE_L, "Defend", graphics.loadTexture("assets/sprites/keyboard/L.png")});
+            controls.push_back({SDL_SCANCODE_I, "Rage", graphics.loadTexture("assets/sprites/keyboard/I.png")});
+        } else if (selectedCharacter == 1) {
+            controls.push_back({SDL_SCANCODE_A, "Move Left", graphics.loadTexture("assets/sprites/keyboard/A.png")});
+            controls.push_back({SDL_SCANCODE_D, "Move Right", graphics.loadTexture("assets/sprites/keyboard/D.png")});
+            controls.push_back({SDL_SCANCODE_SPACE, "Jump", graphics.loadTexture("assets/sprites/keyboard/SPACE.png")});
+            controls.push_back({SDL_SCANCODE_J, "Shoot", graphics.loadTexture("assets/sprites/keyboard/J.png")});
+            controls.push_back({SDL_SCANCODE_L, "Roll", graphics.loadTexture("assets/sprites/keyboard/L.png")});
+            controls.push_back({SDL_SCANCODE_I, "Rage", graphics.loadTexture("assets/sprites/keyboard/I.png")});
+        } else {
+            controls.push_back({SDL_SCANCODE_A, "Move Left", graphics.loadTexture("assets/sprites/keyboard/A.png")});
+            controls.push_back({SDL_SCANCODE_D, "Move Right", graphics.loadTexture("assets/sprites/keyboard/D.png")});
+            controls.push_back({SDL_SCANCODE_SPACE, "Jump", graphics.loadTexture("assets/sprites/keyboard/SPACE.png")});
+            controls.push_back({SDL_SCANCODE_J, "Attack", graphics.loadTexture("assets/sprites/keyboard/J.png")});
+            controls.push_back({SDL_SCANCODE_L, "Defend/Roll", graphics.loadTexture("assets/sprites/keyboard/L.png")});
+            controls.push_back({SDL_SCANCODE_I, "Rage", graphics.loadTexture("assets/sprites/keyboard/I.png")});
+        }
+    }
+
 public:
     void quit() {
         if (player) {
@@ -1609,6 +1627,13 @@ public:
                 platform.texture = nullptr;
             }
         }
+        for (auto& control : controls) {
+            if (control.keyTexture) {
+                SDL_DestroyTexture(control.keyTexture);
+                control.keyTexture = nullptr;
+            }
+        }
+        controls.clear();
     }
 };
 

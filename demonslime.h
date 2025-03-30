@@ -9,35 +9,33 @@
 class DemonSlime : public Boss {
 private:
     float speed = 3.5f;
-    float vx = -2.0f; // Vận tốc ban đầu (di chuyển sang trái)
+    float vx = -2.0f;
     Uint32 lastAttackTime = 0;
-    float attackSpeed = 2.5f; // Tấn công mỗi 2 giây
-    int attackDamage = 15; // Sát thương của boss
-    float groundLevel = 310.0f; // Mặt đất (đồng bộ với Warrior)
-    float distanceMoved = 0.0f; // Theo dõi khoảng cách di chuyển
+    float attackSpeed = 2.5f;
+    int attackDamage = 15;
+    float groundLevel = 310.0f;
+    float distanceMoved = 0.0f;
     float minDistanceToAttack = 200.0f;
-    float chaseRange = 400.0f; // Phạm vi đuổi theo tối đa
+    float chaseRange = 400.0f;
     float startX;
     float targetX = 550.0f;
 
 public:
     void init(Graphics& graphics, float startX, float startY, int stage, float warriorX) override {
-        x = startX; // 1000
-        y = startY; // 550
+        x = startX;
+        y = startY;
         this->startX = 640;
         hp = 250;
-        state = BossState::FLYING; // Bắt đầu di chuyển ngay
+        state = BossState::FLYING;
 
-        // Thiết lập hướng ban đầu dựa trên warriorX
         if (warriorX < startX) {
-            vx = -speed; // Đi sang trái
-            facingLeft = true; // Quay mặt sang trái
+            vx = -speed;
+            facingLeft = true;
         } else {
-            vx = speed; // Đi sang phải
-            facingLeft = false; // Quay mặt sang phải
+            vx = speed;
+            facingLeft = false;
         }
 
-        // Tải sprite
         SDL_Texture* idleTex = graphics.loadTexture("assets/sprites/demon_slime/IDLE.png");
         SDL_Texture* walkTex = graphics.loadTexture("assets/sprites/demon_slime/WALK.png");
         SDL_Texture* attackTex = graphics.loadTexture("assets/sprites/demon_slime/ATTACK.png");
@@ -74,7 +72,6 @@ public:
             attackSpeed = 2.0f;
         }
 
-        // Logic đuổi theo nếu đối thủ là Archer
         Archer* archer = dynamic_cast<Archer*>(player);
         if (archer) {
             float chaseSpeed = (hp < 125) ? 2.5f : 2.0f;
@@ -138,19 +135,15 @@ public:
             hp = 0;
             state = BossState::DEATH;
         } else {
-            // Xác suất 30% lập tức tấn công trả
             if (rand() % 100 < 30) {
                 state = BossState::ATTACK;
                 sprites[state].currentFrame = 0;
                 lastAttackTime = SDL_GetTicks();
             }
         }
-        // Không chuyển sang trạng thái HURT, giữ nguyên trạng thái hiện tại
     }
 
-    // Ghi đè hàm renderProjectile (vì Demon Slime không bắn đạn)
     void renderProjectile(Graphics& graphics, const SDL_Rect& projectile, int offsetX = 0, int offsetY = 0) override {
-        // Không làm gì, vì Demon Slime không có đạn
     }
 
     void render(Graphics& graphics) override {

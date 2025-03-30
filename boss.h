@@ -26,17 +26,13 @@ public:
     virtual void init(Graphics& graphics, float startX, float startY, int stage, float warriorX) = 0;
 
     virtual void update() {
-        // Phương thức ảo để cập nhật trạng thái và vị trí
         Uint32 now = SDL_GetTicks();
         sprites[state].tickTimed(now);
     }
 
-//    virtual void update(float warriorX) = 0;
-
     virtual void update(Player* player) = 0;
 
     virtual void attack(std::vector<SDL_Rect>& projectiles) {
-        // Phương thức ảo để xử lý tấn công
     }
 
     virtual void attack(std::vector<SDL_Rect>& projectiles, float warriorX) = 0;
@@ -67,7 +63,7 @@ public:
     virtual BossState getState() const { return state; }
     virtual int getAttackDamage() const { return 10; }
     int getCurrentFrame() const {
-        return sprites.at(state).currentFrame; // Trả về frame hiện tại của trạng thái hiện tại
+        return sprites.at(state).currentFrame;
     }
     int getSpriteWidth() const {
         return sprites.at(state).getWidth();
