@@ -1,23 +1,35 @@
 # 🌴 Jungle Adventure
 
-**Jungle Adventure** là một tựa game 2D side-scrolling chiến đấu được phát triển bằng C++ và SDL2. Người chơi sẽ hóa thân thành một Warrior hoặc Archer để chiến đấu chống lại các boss đáng sợ trong rừng sâu, thu thập xu, mua vật phẩm, và giải cứu khu rừng khỏi thế lực bóng tối!
+**Jungle Adventure** là một tựa game 2D chiến đấu dựa trên Street Fighter được phát triển bằng C++ và SDL2. Người chơi sẽ hóa thân thành một Warrior hoặc Archer để chiến đấu chống lại các boss đáng sợ trong rừng sâu, thu thập xu, mua vật phẩm, và giải cứu khu rừng khỏi thế lực bóng tối!
 
 ---
 
 ## 🚀 Tính năng nổi bật
 
 - 🎮 **Chọn nhân vật**:
-  - **Warrior**: Cận chiến, kỹ năng Rage tăng sức mạnh và khả năng đỡ đòn.
-  - **Archer**: Tầm xa, tốc độ cao, có kỹ năng Roll và Rage tăng tốc độ bắn.
+  ### 🏹 Archer
+  ![Archer](./assets/characters/archer.png)
+  - Một cung thủ tinh anh với khả năng bắn tên tầm xa, tốc độ cao và kỹ năng **Roll** để né tránh nhanh nhẹn.
+  - Kỹ năng **Rage** giúp tăng tốc độ bắn trong thời gian ngắn.
+
+  ### 🛡️ Warrior
+  ![Warrior](./assets/characters/warrior.png)
+  - Một chiến binh mạnh mẽ với thanh kiếm và khiên, có khả năng **Defend** chặn đòn từ boss.
+  - Kỹ năng **Rage** gia tăng sát thương và đánh liên hoàn.
 
 - 🐉 **Boss chiến hấp dẫn**:
-  - **Flying Demon**: Tấn công từ xa với fireball.
-  - **Demon Slime**: Slime khổng lồ triệu hồi thiên thạch, cận chiến mạnh mẽ.
+  ### 😈 Flying Demon
+  ![Flying Demon](./assets/boss/boss_flying_demon.png)
+  - Một ác quỷ bay lượn, tấn công từ xa bằng fireball, bay qua lại và tấn công bất ngờ.
+
+  ### 🔥 Demon Slime
+  ![Demon Slime](./assets/boss/demon_slime.png)
+  - Một slime khổng lồ bốc lửa, có khả năng **triệu hồi thiên thạch** và gây sát thương lớn khi áp sát.
 
 - 🛒 **Cửa hàng vật phẩm**:
-  - Hồi máu, tăng sát thương, tăng tốc độ, tạo khiên chắn sát thương.
+  - Tăng máu, tăng sát thương, tăng tốc độ, tạo khiên chắn sát thương.
 
-- 🧠 **Hệ thống Rage**: Khi đánh trúng hoặc bị thương, thanh Rage tăng lên để kích hoạt kỹ năng đặc biệt.
+- 🧠 **Hệ thống Rage**: Tăng dần theo thời gian.
 
 - 💥 **Hiệu ứng**: Va chạm, rung màn hình, âm thanh sống động.
 
@@ -42,7 +54,7 @@
 ### Yêu cầu:
 - Hệ điều hành: Windows / Linux
 - Cài sẵn: `SDL2`, `SDL2_image`, `SDL2_mixer`, `SDL2_ttf`
-- Trình biên dịch C++ hỗ trợ C++11 trở lên
+- Trình biên dịch C++ hỗ trợ C++17 trở lên
 
 ### Trên Linux:
 ```bash
@@ -53,7 +65,7 @@ g++ main.cpp -o JungleAdventure -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf
 
 ### Trên Windows:
 - Cài đặt SDL2 và các thư viện đi kèm.
-- Dùng IDE như Visual Studio, Code::Blocks
+- Dùng IDE như Visual Studio, Code::Blocks hoặc MinGW.
 - Thêm thư viện `.lib` và include đúng thư mục `SDL2`, cấu hình path đầy đủ.
 - Build và chạy.
 
@@ -62,7 +74,7 @@ g++ main.cpp -o JungleAdventure -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf
 ## 📁 Cấu trúc thư mục
 
 ```
-├── main.cpp               # Entry point
+├── main.cpp                # Entry point
 ├── game.h                 # Điều khiển toàn bộ trò chơi
 ├── graphics.h             # Xử lý vẽ và texture
 ├── archer.h / warrior.h   # 2 lớp nhân vật có thể chơi
@@ -71,7 +83,7 @@ g++ main.cpp -o JungleAdventure -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf
 ├── controls.h             # Điều khiển phím
 ├── defs.h                 # Hằng số định nghĩa toàn cục
 ├── assets/                # Hình ảnh, nhạc, âm thanh, font
-└── README.md             
+└── README.md              # Tài liệu này
 ```
 
 ---
@@ -84,3 +96,5 @@ g++ main.cpp -o JungleAdventure -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf
 - Trở thành huyền thoại của khu rừng!
 
 ---
+
+Chúc bạn chơi game vui vẻ và giành chiến thắng! 🌿🔥
