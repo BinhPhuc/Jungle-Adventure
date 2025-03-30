@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
     Mix_Chunk* clickSound = graphics.loadSound("assets/sounds/click.wav");
 
     int volume;
-    std::ifstream in("config.txt");
+    std::ifstream in("assets/database/config.txt");
     if (in) {
         in >> volume;
         if (volume != 0) {

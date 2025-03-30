@@ -15,7 +15,7 @@
 
 1742874740 f:\game\game\defs.h
 
-1743086748 source:f:\game\game\main.cpp
+1743324596 source:f:\game\game\main.cpp
 	<iostream>
 	<SDL.h>
 	<SDL_image.h>
@@ -38,7 +38,7 @@
 	<string>
 	"graphics.h"
 
-1742876451 f:\game\game\option.h
+1743324596 f:\game\game\option.h
 	<SDL.h>
 	<SDL_ttf.h>
 	<SDL_mixer.h>
@@ -46,7 +46,7 @@
 	<fstream>
 	"graphics.h"
 
-1743323881 f:\game\game\game.h
+1743324596 f:\game\game\game.h
 	"graphics.h"
 	"player.h"
 	"warrior.h"
@@ -97,7 +97,7 @@
 	<string>
 	<vector>
 
-1743324059 f:\game\game\warrior.h
+1743324129 f:\game\game\warrior.h
 	"player.h"
 
 1743323684 f:\game\game\flyingdemon.h

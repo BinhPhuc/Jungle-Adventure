@@ -194,7 +194,7 @@ public:
         } else {
             setMuted(false);
         }
-        std::ofstream out("config.txt");
+        std::ofstream out("assets/database/config.txt");
         if (out) {
             out << volume << "\n";
             out << playerName << "\n";
@@ -203,7 +203,7 @@ public:
     }
 
     void loadSettings() {
-        std::ifstream in("config.txt");
+        std::ifstream in("assets/database/config.txt");
         if (in) {
             in >> volume;
             in.ignore();

@@ -237,7 +237,7 @@ public:
         chest.sprite.initAuto(chestTex, 96, 96, 3);
         chest.sprite.frameDelay = 100;
 
-        std::ifstream configFile("config.txt");
+        std::ifstream configFile("assets/database/config.txt");
         if (configFile.is_open()) {
             std::string line;
             if (std::getline(configFile, line)) {
@@ -392,7 +392,7 @@ public:
 private:
     void addCoins(int amount) {
         int totalCoins = loadCoins() + amount;
-        std::ofstream out("coins.txt");
+        std::ofstream out("assets/database/coins.txt");
         if (out) {
             out << totalCoins << std::endl;
             out.close();
@@ -401,7 +401,7 @@ private:
     }
 
     int loadCoins() {
-        std::ifstream in("coins.txt");
+        std::ifstream in("assets/database/coins.txt");
         int coins = 0;
         if (in) {
             in >> coins;
@@ -615,7 +615,7 @@ private:
             backPauseHovered = inRect(mx, my, btnBack);
             if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) {
                 state = IN_BATTLE;
-                std::ofstream out("config.txt");
+                std::ofstream out("assets/database/config.txt");
                 if (out) {
                     out << volume << "\n";
                     out << playerName << "\n";
@@ -631,7 +631,7 @@ private:
                 } else if (backPauseHovered) {
                     graphics.play(clickSound);
                     state = IN_BATTLE;
-                    std::ofstream out("config.txt");
+                    std::ofstream out("assets/database/config.txt");
                     if (out) {
                         out << volume << "\n";
                         out << playerName << "\n";
