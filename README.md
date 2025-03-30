@@ -83,7 +83,7 @@ g++ main.cpp -o JungleAdventure -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf
 ├── controls.h             # Điều khiển phím
 ├── defs.h                 # Hằng số định nghĩa toàn cục
 ├── assets/                # Hình ảnh, nhạc, âm thanh, font
-└── README.md              # Tài liệu này
+└── README.md              
 ```
 
 ---
