@@ -96,5 +96,3 @@ g++ main.cpp -o JungleAdventure -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf
 - Trở thành huyền thoại của khu rừng!
 
 ---
-
-Chúc bạn chơi game vui vẻ và giành chiến thắng! 🌿🔥
